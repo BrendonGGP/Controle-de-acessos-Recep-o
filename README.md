@@ -15,6 +15,15 @@ Um sistema completo de gerenciamento de portaria, controle de acessos e agendame
 - 💬 **Integração com WhatsApp:** Notificações instantâneas enviadas via Z-API para avisar os colaboradores sobre suas reuniões e sobre a chegada de suas visitas.
 - 🎨 **Identidade Visual Corporativa:** Design responsivo, elegante e no padrão visual Dark Mode oficial do Grupo Gomes Pires.
 
+## 📚 Documentação Técnica e Manuais
+
+A documentação detalhada do sistema está na pasta `/docs`. Ela é atualizada automaticamente a cada push.
+- 📖 [Visão Geral e Arquitetura](./docs/1_VISAO_GERAL.md)
+- 🖥️ [Manual de Uso (Telas)](./docs/2_MANUAL_DE_USO.md)
+- 🗄️ [Banco de Dados (Tabelas e RLS)](./docs/3_BANCO_DE_DADOS.md)
+- 🔌 [Integrações (Supabase e WhatsApp)](./docs/4_INTEGRACOES.md)
+- 📥 **PDF:** Baixe o PDF completo: [Documentacao_Tecnica_GGP.pdf](./Documentacao_Tecnica_GGP.pdf) (gerado automaticamente pelo GitHub Actions).
+
 ## 🛠️ Tecnologias Utilizadas
 
 **Frontend:**

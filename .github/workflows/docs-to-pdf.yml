@@ -1,0 +1,37 @@
+name: Atualizar Documentacao PDF
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+    branches:
+      - main
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v3
+
+      - name: Setup Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Setup TeX
+        run: sudo apt-get update && sudo apt-get install -y texlive-latex-recommended texlive-xetex texlive-fonts-recommended texlive-fonts-extra
+
+      - name: Gerar PDF das Documentacoes
+        run: |
+          # Junta todos os arquivos de documentacao e gera um PDF via Pandoc
+          cat docs/1_VISAO_GERAL.md docs/2_MANUAL_DE_USO.md docs/3_BANCO_DE_DADOS.md docs/4_INTEGRACOES.md > docs/FULL.md
+          pandoc docs/FULL.md -o Documentacao_Tecnica_GGP.pdf --pdf-engine=xelatex -V geometry:margin=1in
+          rm docs/FULL.md
+
+      - name: Salvar novo PDF no repositorio
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add Documentacao_Tecnica_GGP.pdf
+          git commit -m "docs: atualiza PDF da documentacao automaticamente [skip ci]" || echo "Nenhuma mudanca no PDF"
+          git push
