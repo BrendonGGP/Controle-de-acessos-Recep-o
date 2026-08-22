@@ -48,7 +48,7 @@ export function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
+        <nav className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 space-y-2">
           {filteredNav.map((item) => {
             const isActive = location.pathname.startsWith(item.href)
             return (
@@ -133,7 +133,7 @@ export function AppLayout() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-scroll p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] p-6 md:p-8">
           <Outlet />
         </div>
       </main>
