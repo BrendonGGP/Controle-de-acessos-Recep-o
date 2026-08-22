@@ -7,4 +7,12 @@ html, body, #root {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  color-scheme: dark;
+}
+
+/* Força os ícones nativos de calendário e relógio a ficarem brancos */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.8);
+  cursor: pointer;
 }
