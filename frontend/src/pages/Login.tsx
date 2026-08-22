@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Key, Mail, Loader2 } from 'lucide-react'
+import { Key, Mail, Loader2 } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 

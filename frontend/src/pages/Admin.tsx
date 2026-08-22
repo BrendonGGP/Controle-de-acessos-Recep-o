@@ -142,21 +142,6 @@ export function Admin() {
     setLoadingUsers(false)
   }
 
-  async function handleUpdateRole(id: string, currentRole: string) {
-    const newRole = currentRole === 'admin' ? 'recepcao' : 'admin'
-    if (!confirm(`Mudar o cargo deste usuário para ${newRole.toUpperCase()}?`)) return
-    setLoadingUsers(true)
-    const { error, data } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'update_role', payload: { id, role: newRole } }
-    })
-    if (error || (data && data.error)) {
-      alert('Erro: ' + (error?.message || data?.error))
-    } else {
-      fetchUsers()
-    }
-    setLoadingUsers(false)
-  }
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>

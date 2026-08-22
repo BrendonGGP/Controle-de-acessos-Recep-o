@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Calendar as CalendarIcon, Clock, Users, Coffee, Loader2, X, Edit2, Trash2, User } from 'lucide-react'
+import { Plus, Calendar as CalendarIcon, Clock, Users, Loader2, X, Edit2, Trash2, User } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 
@@ -216,7 +216,7 @@ export function Salas() {
         if (partError) throw partError
 
         if (!editingBookingId) {
-          const { data: invokeData, error: invokeError } = await supabase.functions.invoke('notify-booking', {
+          const { error: invokeError } = await supabase.functions.invoke('notify-booking', {
             body: { booking_id: currentBookingId }
           })
           if (invokeError) {

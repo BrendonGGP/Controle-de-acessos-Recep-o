@@ -1,8 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  Building2, 
-  CalendarDays, 
+import {
+  CalendarDays,
   ShieldCheck, 
   Users, 
   MessageSquare, 
