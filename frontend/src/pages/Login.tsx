@@ -41,12 +41,19 @@ export function Login() {
       </div>
 
       <div className="z-10 w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-blue-500/50 shadow-[0_0_15px_rgba(37,99,235,0.5)]">
-            <Building2 className="w-8 h-8 text-blue-400" />
+        <div className="flex flex-col items-center mb-8 select-none">
+          <div className="flex flex-col items-center justify-center mb-6">
+            <div className="text-6xl font-bold tracking-tighter text-white relative flex leading-none drop-shadow-xl">
+              <span>G</span>
+              <span className="relative">
+                G
+                <div className="absolute top-[46%] -left-[40%] w-[170%] h-[6px] bg-[#00819c] z-10"></div>
+              </span>
+              <span className="text-[#00819c]">P</span>
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Portaria Inteligente</h1>
-          <p className="text-slate-400 mt-2">Grupo Gomes Pires</p>
+          <p className="text-slate-400 mt-2 tracking-[0.2em] uppercase text-xs font-medium">Grupo Gomes Pires</p>
         </div>
 
         <Card className="bg-slate-900/60 border-slate-800 backdrop-blur-xl shadow-2xl">
