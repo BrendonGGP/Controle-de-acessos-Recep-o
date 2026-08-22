@@ -29,7 +29,7 @@ export function AppLayout() {
   const filteredNav = navItems.filter(item => item.roles.includes(role || ''))
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="h-screen bg-slate-950 flex overflow-hidden">
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800">
         <div className="p-6 flex items-center justify-center border-b border-slate-800/50">
@@ -48,7 +48,7 @@ export function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
           {filteredNav.map((item) => {
             const isActive = location.pathname.startsWith(item.href)
             return (
@@ -133,7 +133,7 @@ export function AppLayout() {
           </div>
         )}
 
-        <div className="flex-1 overflow-auto p-6 md:p-8">
+        <div className="flex-1 overflow-y-scroll p-6 md:p-8">
           <Outlet />
         </div>
       </main>
