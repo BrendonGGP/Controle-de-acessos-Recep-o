@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Calendar as CalendarIcon, Clock, Users, Coffee, Loader2, X, Edit2, Trash2, User } from 'lucide-react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 
 // Tipos baseados no schema
 type Room = { id: string; name: string }
@@ -22,6 +24,7 @@ type Booking = {
 }
 
 export function Salas() {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [rooms, setRooms] = useState<Room[]>([])
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,6 +62,18 @@ export function Salas() {
   useEffect(() => {
     fetchDashboard()
   }, [])
+
+  useGSAP(() => {
+    if (!loading && rooms.length > 0) {
+      gsap.from('.room-card', {
+        y: 30,
+        opacity: 0,
+        duration: 0.6,
+        stagger: 0.08,
+        ease: 'back.out(1.2)'
+      })
+    }
+  }, { scope: containerRef, dependencies: [loading, rooms] })
 
   useEffect(() => {
     if (agendaRoom) {
@@ -286,7 +301,7 @@ export function Salas() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={containerRef} className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Status das Salas</h1>
@@ -311,7 +326,7 @@ export function Salas() {
             const isOccupied = !!currentBooking
 
             return (
-              <Card key={room.id} className={`bg-slate-900 border ${isOccupied ? 'border-rose-500/50' : 'border-slate-800'} transition-colors relative overflow-hidden`}>
+              <Card key={room.id} className={`room-card bg-slate-900 border ${isOccupied ? 'border-rose-500/50' : 'border-slate-800'} transition-colors relative overflow-hidden`}>
                 <CardHeader className="pb-4 flex flex-row items-center justify-between">
                   <CardTitle className="text-lg text-white font-semibold">{room.name}</CardTitle>
                   <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isOccupied ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>

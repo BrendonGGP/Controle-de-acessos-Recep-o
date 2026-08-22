@@ -11,12 +11,33 @@ import {
   Menu
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 
 export function AppLayout() {
   const { role, user, signOut } = useAuth()
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+
+  useGSAP(() => {
+    gsap.from('.logo-anim', {
+      y: -20,
+      opacity: 0,
+      duration: 0.8,
+      ease: 'power3.out'
+    })
+    
+    gsap.from('.nav-item', {
+      x: -20,
+      opacity: 0,
+      duration: 0.5,
+      stagger: 0.1,
+      ease: 'power2.out',
+      delay: 0.2
+    })
+  }, { scope: sidebarRef })
 
   const navItems = [
     { name: 'Salas de Reunião', href: '/salas', icon: CalendarDays, roles: ['admin', 'recepcao'] },
@@ -31,9 +52,9 @@ export function AppLayout() {
   return (
     <div className="h-screen bg-slate-950 flex overflow-hidden">
       {/* Sidebar (Desktop) */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800">
+      <aside ref={sidebarRef} className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800">
         <div className="p-6 flex items-center justify-center border-b border-slate-800/50">
-          <div className="flex flex-col items-center select-none">
+          <div className="logo-anim flex flex-col items-center select-none">
             <div className="text-4xl font-bold tracking-tighter text-white relative flex leading-none">
               <span>G</span>
               <span className="relative">
@@ -55,7 +76,7 @@ export function AppLayout() {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                className={`nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                   isActive 
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20' 
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'

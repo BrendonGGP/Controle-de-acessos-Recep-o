@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Key, Mail, Loader2 } from 'lucide-react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 
 export function Login() {
   const navigate = useNavigate()
@@ -13,6 +15,25 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useGSAP(() => {
+    gsap.to('.bg-gradient-anim', {
+      rotation: 360,
+      duration: 100,
+      repeat: -1,
+      ease: 'linear',
+      transformOrigin: 'center center'
+    })
+
+    gsap.from('.animate-slide-up', {
+      y: 40,
+      opacity: 0,
+      duration: 1,
+      stagger: 0.2,
+      ease: 'power3.out'
+    })
+  }, { scope: containerRef })
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,15 +54,15 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    <div ref={containerRef} className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Background gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-full pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl mix-blend-screen" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl mix-blend-screen" />
+        <div className="bg-gradient-anim absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl mix-blend-screen" />
+        <div className="bg-gradient-anim absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl mix-blend-screen" />
       </div>
 
       <div className="z-10 w-full max-w-md">
-        <div className="flex flex-col items-center mb-8 select-none">
+        <div className="animate-slide-up flex flex-col items-center mb-8 select-none">
           <div className="flex flex-col items-center justify-center mb-6">
             <div className="text-6xl font-bold tracking-tighter text-white relative flex leading-none drop-shadow-xl">
               <span>G</span>
@@ -56,7 +77,7 @@ export function Login() {
           <p className="text-slate-400 mt-2 tracking-[0.2em] uppercase text-xs font-medium">Grupo Gomes Pires</p>
         </div>
 
-        <Card className="bg-slate-900/60 border-slate-800 backdrop-blur-xl shadow-2xl">
+        <Card className="animate-slide-up bg-slate-900/60 border-slate-800 backdrop-blur-xl shadow-2xl">
           <CardHeader>
             <CardTitle className="text-xl text-white">Acesso ao Sistema</CardTitle>
             <CardDescription className="text-slate-400">
