@@ -384,7 +384,7 @@ export function Salas() {
                     onClick={(e) => {
                       try { e.currentTarget.showPicker() } catch (err) {}
                     }}
-                    className="bg-slate-950 border-slate-700 text-white cursor-pointer pl-10 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:invert"
+                    className="bg-slate-950 border-slate-700 text-white cursor-pointer pl-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <CalendarIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                 </div>
@@ -531,7 +531,7 @@ export function Salas() {
                     onClick={(e) => {
                       try { e.currentTarget.showPicker() } catch (err) {}
                     }}
-                    className="bg-slate-950 border-slate-700 text-white cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:invert" 
+                    className="bg-slate-950 border-slate-700 text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
                   />
                 </div>
               </div>
@@ -539,7 +539,15 @@ export function Salas() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime" className="text-slate-300">Início *</Label>
-                  <Input id="startTime" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required className="bg-slate-950 border-slate-700 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:invert" />
+                  <Input 
+                    id="startTime" 
+                    type="time" 
+                    value={startTime} 
+                    onChange={e => setStartTime(e.target.value)} 
+                    required 
+                    onClick={(e) => { try { e.currentTarget.showPicker() } catch (err) {} }}
+                    className="bg-slate-950 border-slate-700 text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="duration" className="text-slate-300">Duração (minutos) *</Label>
