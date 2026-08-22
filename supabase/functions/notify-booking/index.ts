@@ -100,9 +100,12 @@ serve(async (req: Request) => {
               message: message
             })
           })
-          return { phone: collab.phone, success: response.ok }
-        } catch (e) {
-          return { phone: collab.phone, success: false }
+          const responseText = await response.text()
+          console.log('Resposta Z-API:', { status: response.status, body: responseText })
+          return { phone: collab.phone, success: response.ok, statusCode: response.status, responseBody: responseText }
+        } catch (e: any) {
+          console.error('Erro ao chamar Z-API:', e.message)
+          return { phone: collab.phone, success: false, error: e.message }
         }
       })
     )
