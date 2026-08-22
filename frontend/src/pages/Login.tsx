@@ -26,13 +26,10 @@ export function Login() {
       transformOrigin: 'center center'
     })
 
-    gsap.from('.animate-slide-up', {
-      y: 40,
-      opacity: 0,
-      duration: 1,
-      stagger: 0.2,
-      ease: 'power3.out'
-    })
+    gsap.fromTo('.animate-slide-up', 
+      { y: 40, opacity: 0 },
+      { y: 0, opacity: 1, duration: 1, stagger: 0.2, ease: 'power3.out' }
+    )
   }, { scope: containerRef })
 
   const handleLogin = async (e: React.FormEvent) => {

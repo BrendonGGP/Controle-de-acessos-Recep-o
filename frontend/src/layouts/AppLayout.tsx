@@ -22,21 +22,15 @@ export function AppLayout() {
   const sidebarRef = useRef<HTMLElement>(null)
 
   useGSAP(() => {
-    gsap.from('.logo-anim', {
-      y: -20,
-      opacity: 0,
-      duration: 0.8,
-      ease: 'power3.out'
-    })
+    gsap.fromTo('.logo-anim', 
+      { y: -20, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }
+    )
     
-    gsap.from('.nav-item', {
-      x: -20,
-      opacity: 0,
-      duration: 0.5,
-      stagger: 0.1,
-      ease: 'power2.out',
-      delay: 0.2
-    })
+    gsap.fromTo('.nav-item', 
+      { x: -20, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out', delay: 0.2 }
+    )
   }, { scope: sidebarRef })
 
   const navItems = [

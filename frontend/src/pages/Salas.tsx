@@ -65,13 +65,10 @@ export function Salas() {
 
   useGSAP(() => {
     if (!loading && rooms.length > 0) {
-      gsap.from('.room-card', {
-        y: 30,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.08,
-        ease: 'back.out(1.2)'
-      })
+      gsap.fromTo('.room-card', 
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: 'back.out(1.2)' }
+      )
     }
   }, { scope: containerRef, dependencies: [loading, rooms] })
 
