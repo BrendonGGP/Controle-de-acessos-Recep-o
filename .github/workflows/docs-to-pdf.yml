@@ -1,11 +1,24 @@
 name: Atualizar Documentacao PDF
 
+# Gera o PDF da documentacao e o publica como artefato do workflow e
+# como asset da release "docs-latest".
+#
+# Antes este workflow commitava o PDF de volta no main. Isso parou de
+# funcionar quando a branch passou a exigir status checks: um push de
+# bot nao dispara os checks, entao a protecao rejeita o commit
+# (GH006: Protected branch update failed).
+#
+# Publicar como release asset e melhor de qualquer forma: o PDF e um
+# artefato gerado, e versiona-lo suja o historico com diffs binarios a
+# cada alteracao na documentacao.
+
 on:
   push:
     paths:
       - 'docs/**'
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,16 +43,41 @@ jobs:
 
       - name: Gerar PDF das Documentacoes
         run: |
-          # Junta todos os arquivos de documentacao e gera um PDF via Pandoc
           # Ordem numerica dos arquivos; inclui automaticamente novos docs
           cat $(ls docs/[0-9]*.md | sort -V) > docs/FULL.md
-          pandoc docs/FULL.md -o Documentacao_Tecnica_GGP.pdf --pdf-engine=xelatex -V geometry:margin=1in
+          pandoc docs/FULL.md -o Documentacao_Tecnica_GGP.pdf \
+            --pdf-engine=xelatex \
+            -V geometry:margin=1in \
+            -V lang=pt-BR \
+            --toc
           rm docs/FULL.md
 
-      - name: Salvar novo PDF no repositorio
+      - name: Publicar como artefato do workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentacao-pdf
+          path: Documentacao_Tecnica_GGP.pdf
+          retention-days: 90
+
+      - name: Publicar na release docs-latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: docs-latest
+          name: Documentacao Tecnica (ultima versao)
+          body: |
+            PDF gerado automaticamente a partir de `docs/` no commit ${{ github.sha }}.
+
+            Atualizado em cada alteracao da documentacao no branch main.
+          files: Documentacao_Tecnica_GGP.pdf
+          make_latest: false
+
+      - name: Resumo
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add Documentacao_Tecnica_GGP.pdf
-          git commit -m "docs: atualiza PDF da documentacao automaticamente [skip ci]" || echo "Nenhuma mudanca no PDF"
-          git push
+          {
+            echo "### Documentacao em PDF"
+            echo ""
+            echo "Gerada a partir de:"
+            ls docs/[0-9]*.md | sort -V | sed 's/^/- /'
+            echo ""
+            echo "Disponivel em **Artifacts** acima e na release \`docs-latest\`."
+          } >> "$GITHUB_STEP_SUMMARY"
