@@ -1,0 +1,48 @@
+# Regras de rotulagem automatica de PRs (actions/labeler v5)
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**'
+
+banco de dados:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/migrations/**'
+          - 'supabase/seed.sql'
+          - 'supabase/bootstrap_admin.sql'
+
+edge functions:
+  - changed-files:
+      - any-glob-to-any-file: 'supabase/functions/**'
+
+whatsapp:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/functions/notify-access/**'
+          - 'supabase/functions/notify-booking/**'
+          - 'supabase/functions/_shared/**'
+
+documentacao:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+
+ci/cd:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+dependencias:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/package.json'
+          - '**/package-lock.json'
+
+configuracao:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/config.toml'
+          - 'frontend/vercel.json'
+          - 'frontend/vite.config.ts'
+          - 'frontend/tsconfig*.json'
+          - 'frontend/tailwind.config.js'

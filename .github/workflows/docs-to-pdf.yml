@@ -7,13 +7,20 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-pdf
+  cancel-in-progress: true
+
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout do repositorio
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Pandoc
         uses: r-lib/actions/setup-pandoc@v2

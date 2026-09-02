@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execucoes antigas da mesma branch quando um novo push chega
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend (lint, types, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npx tsc -b --noEmit
+
+      - name: Build de producao
+        run: npm run build
+        env:
+          # Valores de placeholder: o build so precisa que as variaveis existam.
+          # Os valores reais ficam nas env vars da Vercel.
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+
+      - name: Publicar artefato do build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  edge-functions:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Checagem de tipos das functions
+        run: |
+          for f in supabase/functions/*/index.ts; do
+            echo "--- deno check $f"
+            deno check --no-lock "$f"
+          done
+
+      - name: Lint
+        run: deno lint --config supabase/functions/deno.json supabase/functions/
+
+  sql:
+    name: Migrations (SQL)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar migrations em um Postgres limpo
+        run: |
+          # Sobe um Postgres 17 igual ao do Supabase e aplica as migrations
+          # em ordem, garantindo que rodam do zero sem erro.
+          docker run -d --name pg \
+            -e POSTGRES_PASSWORD=postgres \
+            -p 5432:5432 \
+            postgres:17
+
+          for i in $(seq 1 30); do
+            docker exec pg pg_isready -U postgres && break
+            sleep 2
+          done
+
+          # Stubs do que o Supabase provê e as migrations esperam encontrar
+          docker exec -i pg psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+          create table auth.users (id uuid primary key, email text);
+          create or replace function auth.uid() returns uuid
+            language sql stable as $$ select null::uuid $$;
+          create or replace function auth.role() returns text
+            language sql stable as $$ select 'authenticated'::text $$;
+          SQL
+
+          for f in supabase/migrations/*.sql; do
+            echo "--- aplicando $f"
+            docker exec -i pg psql -U postgres -v ON_ERROR_STOP=1 < "$f"
+          done
+
+          echo "--- aplicando seed"
+          docker exec -i pg psql -U postgres -v ON_ERROR_STOP=1 < supabase/seed.sql
+
+          echo "--- seed e idempotente? (rodando de novo)"
+          docker exec -i pg psql -U postgres -v ON_ERROR_STOP=1 < supabase/seed.sql
+
+          echo "--- tabelas criadas:"
+          docker exec pg psql -U postgres -c "\dt public.*"
