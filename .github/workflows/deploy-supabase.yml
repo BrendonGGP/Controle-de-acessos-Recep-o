@@ -51,6 +51,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Conferir se os secrets estao configurados
+        run: |
+          faltando=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || faltando="$faltando SUPABASE_ACCESS_TOKEN"
+          [ -n "$SUPABASE_DB_PASSWORD" ] || faltando="$faltando SUPABASE_DB_PASSWORD"
+          [ -n "${{ secrets.SUPABASE_PROJECT_REF }}" ] || faltando="$faltando SUPABASE_PROJECT_REF"
+
+          if [ -n "$faltando" ]; then
+            echo "::error::Secrets ausentes:$faltando"
+            echo "Cadastre em Settings > Secrets and variables > Actions."
+            echo "Passo a passo em docs/5_CONFIGURACAO_DEPLOY.md"
+            exit 1
+          fi
+          echo "Os tres secrets estao presentes."
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -64,7 +79,7 @@ jobs:
 
       - name: Aplicar migrations
         if: github.event_name == 'push' || inputs.deploy_migrations
-        run: supabase db push
+        run: supabase db push --yes
 
       - name: Publicar Edge Functions
         if: github.event_name == 'push' || inputs.deploy_functions
