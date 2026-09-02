@@ -56,7 +56,8 @@ serve(async (req: Request) => {
       .from('message_templates')
       .select('message')
       .eq('type', 'agendamento')
-      .single()
+      .is('category', null)
+      .maybeSingle()
 
     const roomName = (booking.rooms as any)?.name || 'Sala Desconhecida'
     const waApiUrl = Deno.env.get('WA_API_URL')
@@ -75,10 +76,10 @@ serve(async (req: Request) => {
         if (templateData && templateData.message) {
           message = templateData.message
             .replace(/\[NOME_PARTICIPANTE\]/g, collab.name)
-            .replace(/\[TITULO\]/g, booking.title)
-            .replace(/\[NOME_SALA\]/g, roomName)
-            .replace(/\[DATA\]/g, dataStr)
-            .replace(/\[HORA\]/g, horarioStr)
+            .replace(/\{\{titulo\}\}/g, booking.title)
+            .replace(/\{\{sala\}\}/g, roomName)
+            .replace(/\{\{data\}\}/g, dataStr)
+            .replace(/\{\{horario\}\}/g, horarioStr)
         } else {
           message = `Olá *${collab.name}*! 📅\n\nVocê foi convidado(a) para uma reunião:\n\n*Assunto:* ${booking.title}\n*Sala:* ${roomName}\n*Data:* ${dataStr}\n*Horário:* ${horarioStr}\n\n_Mensagem automática da Portaria Inteligente._`
         }

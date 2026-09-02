@@ -7,13 +7,20 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-pdf
+  cancel-in-progress: true
+
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout do repositorio
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Pandoc
         uses: r-lib/actions/setup-pandoc@v2
@@ -24,7 +31,8 @@ jobs:
       - name: Gerar PDF das Documentacoes
         run: |
           # Junta todos os arquivos de documentacao e gera um PDF via Pandoc
-          cat docs/1_VISAO_GERAL.md docs/2_MANUAL_DE_USO.md docs/3_BANCO_DE_DADOS.md docs/4_INTEGRACOES.md > docs/FULL.md
+          # Ordem numerica dos arquivos; inclui automaticamente novos docs
+          cat $(ls docs/[0-9]*.md | sort -V) > docs/FULL.md
           pandoc docs/FULL.md -o Documentacao_Tecnica_GGP.pdf --pdf-engine=xelatex -V geometry:margin=1in
           rm docs/FULL.md
 

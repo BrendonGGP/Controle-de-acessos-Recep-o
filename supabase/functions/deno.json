@@ -1,0 +1,12 @@
+{
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any", "no-import-prefix"]
+    }
+  },
+  "fmt": {
+    "semiColons": false,
+    "singleQuote": true,
+    "lineWidth": 100
+  }
+}

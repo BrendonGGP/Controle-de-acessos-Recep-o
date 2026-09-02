@@ -59,11 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data && !error) {
         setRole(data.role as 'admin' | 'recepcao')
       } else {
-        // Fallback de segurança (hardcoded para o seu email ser admin)
-        const currentUser = await supabase.auth.getUser()
-        if (currentUser.data.user?.email === 'brendon.nakagawa@grupogomespires.com.br') {
-          setRole('admin')
-        }
+        // Sem linha em system_users o usuário não tem permissão no sistema.
+        console.error('Usuário sem cadastro em system_users:', error?.message)
+        setRole(null)
       }
     } catch (err) {
       console.error('Erro ao buscar role:', err)

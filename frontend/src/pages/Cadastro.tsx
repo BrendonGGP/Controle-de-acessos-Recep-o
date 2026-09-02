@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { formatCPF, formatPhone, formatName } from '@/lib/utils'
+import { formatCPF, formatPhone, formatName, normalizePhone } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -74,9 +74,9 @@ export function Cadastro() {
     }
 
     try {
-      let cleanPhone = phone.replace(/\D/g, '')
-      if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-        cleanPhone = '55' + cleanPhone
+      const cleanPhone = normalizePhone(phone)
+      if (!cleanPhone) {
+        throw new Error('Telefone inválido. Informe DDD + número (ex: (11) 98765-4321).')
       }
       const cleanCpf = cpf.replace(/\D/g, '')
 

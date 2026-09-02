@@ -11,12 +11,6 @@ type Template = {
   message: string
 }
 
-const DEFAULT_TEMPLATES = [
-  { type: 'entrada', subject: 'Aviso de Chegada', message: 'Olá *{{nome_colaborador}}*! 🏢\n\nO(a) visitante/prestador *{{nome_visitante}}* acabou de registrar uma *entrada* na recepção.\n\n_Mensagem automática da Portaria Inteligente._' },
-  { type: 'saida', subject: 'Aviso de Saída', message: 'Olá *{{nome_colaborador}}*! 🏢\n\nO(a) visitante/prestador *{{nome_visitante}}* acabou de registrar uma *saída* da recepção.\n\n_Mensagem automática da Portaria Inteligente._' },
-  { type: 'agendamento', subject: 'Convite de Reunião', message: 'Olá *{{nome_colaborador}}*! 📅\n\nVocê foi convidado(a) para uma reunião:\n\n*Assunto:* {{titulo}}\n*Sala:* {{sala}}\n*Data:* {{data}}\n*Horário:* {{horario}}\n\n_Mensagem automática da Portaria Inteligente._' },
-]
-
 export function Mensagens() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,19 +20,12 @@ export function Mensagens() {
     fetchTemplates()
   }, [])
 
+  // Os templates padrão são criados pelo `supabase/seed.sql` (a escrita em
+  // message_templates é restrita a admin pelo RLS, então não pode partir daqui).
   async function fetchTemplates() {
     setLoading(true)
     const { data } = await supabase.from('message_templates').select('*').order('type')
-    
-    // Se o banco estiver vazio, sedia com os defaults automaticamente
-    if (!data || data.length === 0) {
-      await supabase.from('message_templates').insert(DEFAULT_TEMPLATES)
-      const { data: newData } = await supabase.from('message_templates').select('*').order('type')
-      if (newData) setTemplates(newData)
-    } else {
-      setTemplates(data)
-    }
-    
+    setTemplates(data ?? [])
     setLoading(false)
   }
 
@@ -58,8 +45,8 @@ export function Mensagens() {
   }
 
   const getVariablesHelp = (type: string) => {
-    if (type === 'entrada' || type === 'saida') return 'Variáveis permitidas: {{nome_colaborador}}, {{nome_visitante}}'
-    if (type === 'agendamento') return 'Variáveis permitidas: {{nome_colaborador}}, {{titulo}}, {{sala}}, {{data}}, {{horario}}'
+    if (type === 'entrada' || type === 'saida') return 'Variáveis permitidas: {{nome_colaborador}}, {{nome_visitante}}, {{acao}}'
+    if (type === 'agendamento' || type === 'lembrete') return 'Variáveis permitidas: {{nome_colaborador}}, {{titulo}}, {{sala}}, {{data}}, {{horario}}'
     return ''
   }
 
@@ -67,7 +54,8 @@ export function Mensagens() {
     const map: Record<string, string> = {
       'entrada': 'Visitante - Entrada',
       'saida': 'Visitante - Saída',
-      'agendamento': 'Reunião - Novo Agendamento'
+      'agendamento': 'Reunião - Novo Agendamento',
+      'lembrete': 'Reunião - Lembrete'
     }
     return map[type] || type
   }
@@ -86,6 +74,16 @@ export function Mensagens() {
         <div className="flex justify-center p-12">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
         </div>
+      ) : templates.length === 0 ? (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardContent className="pt-6 flex items-start gap-2 text-slate-400">
+            <Info className="w-5 h-5 shrink-0 mt-0.5 text-blue-400" />
+            <p>
+              Nenhum template cadastrado. Execute o <code className="text-blue-300">supabase/seed.sql</code> no
+              banco para criar os textos padrão.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6">
           {templates.map(template => (
