@@ -36,10 +36,7 @@ serve(async (req) => {
       .eq('id', user.id)
       .single()
 
-    // Fallback caso a query de RLS falhe por recursão etc (Apenas por garantia)
-    const isExplicitAdmin = user.email === 'brendon.nakagawa@grupogomespires.com.br'
-
-    if (systemUser?.role !== 'admin' && !isExplicitAdmin) {
+    if (systemUser?.role !== 'admin') {
       throw new Error('Acesso negado: Somente administradores podem gerenciar usuários')
     }
 
@@ -134,9 +131,10 @@ serve(async (req) => {
 
     throw new Error('Ação inválida')
   } catch (error: any) {
+    console.error('Erro em manage-users:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: 400,
     })
   }
 })

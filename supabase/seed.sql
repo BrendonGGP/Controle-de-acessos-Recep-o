@@ -10,9 +10,14 @@
 -- SALAS DE REUNIÃO
 -- ------------------------------------------
 insert into rooms (name) values
-  ('Sala de Reunião 1'),
-  ('Sala de Reunião 2'),
-  ('Auditório')
+  ('Bugatti'),
+  ('Ferrari'),
+  ('Ford'),
+  ('Honda'),
+  ('Mercedes'),
+  ('Nissan'),
+  ('Podcast'),
+  ('Toyota')
 on conflict (name) do nothing;
 
 -- ------------------------------------------

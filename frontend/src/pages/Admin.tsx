@@ -91,6 +91,20 @@ export function Admin() {
     setIsUserModalOpen(true)
   }
 
+  // Com status != 2xx o supabase-js devolve um FunctionsHttpError genérico e a
+  // mensagem real fica no corpo da resposta — esta função a extrai.
+  async function extractFunctionError(error: any, data: any): Promise<string | null> {
+    if (data?.error) return data.error
+    if (!error) return null
+    try {
+      const body = await error.context?.json()
+      if (body?.error) return body.error
+    } catch {
+      // corpo não era JSON; usa a mensagem genérica
+    }
+    return error.message
+  }
+
   async function handleSaveUser(e: React.FormEvent) {
     e.preventDefault()
     setLoadingUsers(true)
@@ -109,8 +123,8 @@ export function Admin() {
           } 
         }
       })
-      if (error) alert('Erro ao atualizar usuário: ' + error.message)
-      else if (data && data.error) alert('Erro: ' + data.error)
+      const msg = await extractFunctionError(error, data)
+      if (msg) alert('Erro ao atualizar usuário: ' + msg)
       else { setIsUserModalOpen(false); fetchUsers(); }
     } else {
       // CREATE
@@ -120,8 +134,8 @@ export function Admin() {
           payload: { name: newUserName, email: newUserEmail, password: newUserPassword, role: newUserRole } 
         }
       })
-      if (error) alert('Erro ao criar usuário: ' + error.message)
-      else if (data && data.error) alert('Erro: ' + data.error)
+      const msg = await extractFunctionError(error, data)
+      if (msg) alert('Erro ao criar usuário: ' + msg)
       else { setIsUserModalOpen(false); fetchUsers(); }
     }
     
@@ -134,8 +148,9 @@ export function Admin() {
     const { error, data } = await supabase.functions.invoke('manage-users', {
       body: { action: 'delete', payload: { id } }
     })
-    if (error || (data && data.error)) {
-      alert('Erro: ' + (error?.message || data?.error))
+    const msg = await extractFunctionError(error, data)
+    if (msg) {
+      alert('Erro ao excluir usuário: ' + msg)
     } else {
       fetchUsers()
     }
