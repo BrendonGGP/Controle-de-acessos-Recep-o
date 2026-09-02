@@ -102,8 +102,13 @@ jobs:
             sleep 2
           done
 
-          # Stubs do que o Supabase provê e as migrations esperam encontrar
+          # Stubs do que o Supabase provê e as migrations esperam encontrar:
+          # o schema auth, suas funcoes, e os roles do PostgREST.
           docker exec -i pg psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+
           create schema if not exists auth;
           create table auth.users (id uuid primary key, email text);
           create or replace function auth.uid() returns uuid
