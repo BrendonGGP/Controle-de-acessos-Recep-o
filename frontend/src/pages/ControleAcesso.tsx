@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { formatPhone, formatName } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
+import { formatPhone, formatName, normalizePhone } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +19,7 @@ type AccessLog = {
 }
 
 export function ControleAcesso() {
+  const { user } = useAuth()
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [logs, setLogs] = useState<AccessLog[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,9 +72,13 @@ export function ControleAcesso() {
     }
 
     try {
-      let cleanPhone = phone.replace(/\D/g, '')
-      if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-        cleanPhone = '55' + cleanPhone
+      // Telefone do visitante é opcional, mas se preenchido precisa ser válido
+      let cleanPhone: string | null = null
+      if (phone.trim()) {
+        cleanPhone = normalizePhone(phone)
+        if (!cleanPhone) {
+          throw new Error('Telefone inválido. Informe DDD + número (ex: (11) 98765-4321).')
+        }
       }
 
       const { data: newLog, error: insertError } = await supabase
@@ -85,7 +91,8 @@ export function ControleAcesso() {
           phone: cleanPhone,
           observations,
           notify,
-          notified_collaborator_id: notify ? collaboratorId : null
+          notified_collaborator_id: notify ? collaboratorId : null,
+          created_by: user?.id ?? null
         })
         .select()
         .single()

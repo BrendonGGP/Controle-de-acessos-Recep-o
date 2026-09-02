@@ -49,21 +49,26 @@ serve(async (req: Request) => {
 
     const { name: collabName, phone: collabPhone } = collab
 
-    // 3. Buscar o template no banco
+    // 3. Buscar o template no banco.
+    // Busca os templates do tipo com a categoria específica E o genérico (category null),
+    // dando preferência ao específico quando existir.
     const templateType = record.action === 'entrada' ? 'entrada' : 'saida'
-    const { data: templateData } = await supabase
+    const { data: templates } = await supabase
       .from('message_templates')
-      .select('message')
+      .select('message, category')
       .eq('type', templateType)
-      .eq('category', record.category)
-      .maybeSingle() // maybeSingle para não falhar caso não encontre
+      .or(`category.eq.${record.category},category.is.null`)
+
+    const templateData =
+      templates?.find((t: any) => t.category === record.category) ??
+      templates?.find((t: any) => t.category === null)
 
     let message = ''
     if (templateData && templateData.message) {
       message = templateData.message
-        .replace(/\[NOME_COLABORADOR\]/g, collabName)
-        .replace(/\[NOME_VISITANTE\]/g, record.visitor_name)
-        .replace(/\[ACAO\]/g, record.action)
+        .replace(/\{\{nome_colaborador\}\}/g, collabName)
+        .replace(/\{\{nome_visitante\}\}/g, record.visitor_name)
+        .replace(/\{\{acao\}\}/g, record.action)
     } else {
       // Fallback genérico caso a categoria não tenha template
       const actionText = record.action === 'entrada' ? 'chegou na recepção' : 'saiu da recepção'

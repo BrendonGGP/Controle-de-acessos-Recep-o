@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ type Booking = {
 }
 
 export function Salas() {
+  const { user } = useAuth()
   const containerRef = useRef<HTMLDivElement>(null)
   const [rooms, setRooms] = useState<Room[]>([])
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -198,7 +200,8 @@ export function Salas() {
             booking_date: date,
             start_time: startTime,
             duration_minutes: parseInt(duration),
-            service
+            service,
+            created_by: user?.id ?? null
           })
           .select()
           .single()

@@ -32,6 +32,33 @@ export function formatPhone(value: string) {
   return `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`
 }
 
+/**
+ * Normaliza um telefone brasileiro para o formato exigido pelo Z-API (só dígitos,
+ * com DDI 55). Retorna `null` se o número não for válido.
+ *
+ * Aceita: 10 dígitos (fixo com DDD), 11 dígitos (celular com DDD e 9 inicial)
+ * ou os mesmos já prefixados com o DDI 55.
+ */
+export function normalizePhone(value: string): string | null {
+  let digits = value.replace(/\D/g, '')
+
+  if (digits.length === 12 || digits.length === 13) {
+    if (!digits.startsWith('55')) return null
+    digits = digits.substring(2)
+  }
+
+  if (digits.length !== 10 && digits.length !== 11) return null
+
+  // DDD válido no Brasil: 11 a 99
+  const ddd = parseInt(digits.substring(0, 2), 10)
+  if (ddd < 11) return null
+
+  // Celular (11 dígitos) precisa começar com 9 depois do DDD
+  if (digits.length === 11 && digits[2] !== '9') return null
+
+  return '55' + digits
+}
+
 export function formatName(value: string) {
   // Converte "joão da silva" para "João da Silva" ignorando preposições se quiser, mas para simplificar:
   return value.split(' ').map(word => {
