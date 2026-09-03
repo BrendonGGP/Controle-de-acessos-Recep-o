@@ -24,6 +24,14 @@ type Booking = {
   booking_participants: { collaborator_id: string }[]
 }
 
+// Opções fixas do seletor de duração, em minutos. Uma reserva com duração
+// fora desta lista é tratada como personalizada.
+const PRESET_DURATIONS = [30, 60, 90, 120, 180, 240]
+
+// Limite de uma reunião: 12 horas. Evita erro de digitação virar uma
+// reserva que ocupa a sala o dia inteiro.
+const MAX_DURATION_MINUTES = 12 * 60
+
 export function Salas() {
   const { user } = useAuth()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,6 +62,11 @@ export function Salas() {
   const [date, setDate] = useState(todayStr)
   const [startTime, setStartTime] = useState('09:00')
   const [duration, setDuration] = useState('60')
+  // Duração personalizada: quando ativa, `duration` passa a ser calculada
+  // a partir destes dois campos em vez de vir das opções fixas do select.
+  const [isCustomDuration, setIsCustomDuration] = useState(false)
+  const [customHours, setCustomHours] = useState('0')
+  const [customMinutes, setCustomMinutes] = useState('0')
   const [service, setService] = useState('sem_cafe')
   const [selectedCollabs, setSelectedCollabs] = useState<string[]>([])
   
@@ -129,8 +142,21 @@ export function Salas() {
     
     const startMins = timeToMinutes(booking.start_time)
     const endMins = timeToMinutes(booking.end_time)
-    setDuration((endMins - startMins).toString())
-    
+    const totalMins = endMins - startMins
+    setDuration(totalMins.toString())
+
+    // Duração que não corresponde a nenhuma opção fixa abre no modo
+    // personalizado, para que o valor real apareça ao editar.
+    if (PRESET_DURATIONS.includes(totalMins)) {
+      setIsCustomDuration(false)
+      setCustomHours('0')
+      setCustomMinutes('0')
+    } else {
+      setIsCustomDuration(true)
+      setCustomHours(Math.floor(totalMins / 60).toString())
+      setCustomMinutes((totalMins % 60).toString())
+    }
+
     setService(booking.service)
     setSelectedCollabs(booking.booking_participants?.map(p => p.collaborator_id) || [])
     setIsModalOpen(true)
@@ -153,6 +179,26 @@ export function Salas() {
       return
     }
 
+    const durationMinutes = parseInt(duration)
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      setError('Informe uma duração maior que zero.')
+      setFormLoading(false)
+      return
+    }
+
+    if (durationMinutes > MAX_DURATION_MINUTES) {
+      setError(`A duração não pode passar de ${MAX_DURATION_MINUTES / 60} horas.`)
+      setFormLoading(false)
+      return
+    }
+
+    if (timeToMinutes(startTime) + durationMinutes > 24 * 60) {
+      setError('A reunião ultrapassa o fim do dia. Ajuste o início ou a duração.')
+      setFormLoading(false)
+      return
+    }
+
     try {
       // Validação de conflito (precisa buscar todos os bookings do dia para aquela sala, já que dashboard só tem de hoje)
       const { data: dayBookings } = await supabase
@@ -162,7 +208,7 @@ export function Salas() {
         .eq('booking_date', date)
 
       const startMinutes = timeToMinutes(startTime)
-      const endMinutes = startMinutes + parseInt(duration)
+      const endMinutes = startMinutes + durationMinutes
 
       const hasConflict = (dayBookings || []).some(b => {
         if (editingBookingId && b.id === editingBookingId) return false
@@ -185,7 +231,7 @@ export function Salas() {
             title,
             booking_date: date,
             start_time: startTime,
-            duration_minutes: parseInt(duration),
+            duration_minutes: durationMinutes,
             service
           })
           .eq('id', editingBookingId)
@@ -199,7 +245,7 @@ export function Salas() {
             title,
             booking_date: date,
             start_time: startTime,
-            duration_minutes: parseInt(duration),
+            duration_minutes: durationMinutes,
             service,
             created_by: user?.id ?? null
           })
@@ -256,6 +302,9 @@ export function Salas() {
     setRoomId('')
     setStartTime('09:00')
     setDuration('60')
+    setIsCustomDuration(false)
+    setCustomHours('0')
+    setCustomMinutes('0')
     setService('sem_cafe')
     setSelectedCollabs([])
     setParticipantSearch('')
@@ -565,11 +614,23 @@ export function Salas() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="duration" className="text-slate-300">Duração (minutos) *</Label>
-                  <select 
-                    id="duration" 
-                    value={duration} 
-                    onChange={e => setDuration(e.target.value)} 
+                  <Label htmlFor="duration" className="text-slate-300">Duração *</Label>
+                  <select
+                    id="duration"
+                    value={isCustomDuration ? 'custom' : duration}
+                    onChange={e => {
+                      if (e.target.value === 'custom') {
+                        // Pré-preenche com a duração atual, para o usuário
+                        // ajustar a partir dela em vez de começar do zero.
+                        const atual = parseInt(duration) || 0
+                        setCustomHours(Math.floor(atual / 60).toString())
+                        setCustomMinutes((atual % 60).toString())
+                        setIsCustomDuration(true)
+                      } else {
+                        setIsCustomDuration(false)
+                        setDuration(e.target.value)
+                      }
+                    }}
                     className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="30">30 min</option>
@@ -578,9 +639,62 @@ export function Salas() {
                     <option value="120">2 horas</option>
                     <option value="180">3 horas</option>
                     <option value="240">4 horas</option>
+                    <option value="custom">Personalizado…</option>
                   </select>
                 </div>
               </div>
+
+              {isCustomDuration && (
+                <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+                  <Label className="text-slate-300">Duração personalizada *</Label>
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="customHours" className="text-xs text-slate-400">Horas</Label>
+                      <Input
+                        id="customHours"
+                        type="number"
+                        min="0"
+                        max="12"
+                        value={customHours}
+                        onChange={e => {
+                          setCustomHours(e.target.value)
+                          const h = parseInt(e.target.value) || 0
+                          const m = parseInt(customMinutes) || 0
+                          setDuration((h * 60 + m).toString())
+                        }}
+                        className="bg-slate-950 border-slate-700 text-white"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="customMinutes" className="text-xs text-slate-400">Minutos</Label>
+                      <Input
+                        id="customMinutes"
+                        type="number"
+                        min="0"
+                        max="59"
+                        step="5"
+                        value={customMinutes}
+                        onChange={e => {
+                          setCustomMinutes(e.target.value)
+                          const h = parseInt(customHours) || 0
+                          const m = parseInt(e.target.value) || 0
+                          setDuration((h * 60 + m).toString())
+                        }}
+                        className="bg-slate-950 border-slate-700 text-white"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    {(() => {
+                      const total = parseInt(duration) || 0
+                      if (total <= 0) return 'Informe uma duração maior que zero.'
+                      const fim = timeToMinutes(startTime) + total
+                      const hhmm = `${String(Math.floor(fim / 60) % 24).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}`
+                      return `Total: ${Math.floor(total / 60)}h ${total % 60}min — termina às ${hhmm}`
+                    })()}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="service" className="text-slate-300">Serviço de Copa</Label>
