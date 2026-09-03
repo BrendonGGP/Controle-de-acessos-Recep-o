@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, UserPlus, Loader2, X, Phone, Mail, FileText, Edit2 } from 'lucide-react'
+import { Users, UserPlus, Loader2, X, Phone, Mail, FileText, Edit2, Trash2, AlertTriangle } from 'lucide-react'
 
 type Collaborator = {
   id: string
@@ -25,6 +25,11 @@ export function Cadastro() {
   const [formLoading, setFormLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Exclusão: guarda o colaborador a confirmar, para o modal saber o nome.
+  const [deletingCollab, setDeletingCollab] = useState<Collaborator | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Form state
   const [name, setName] = useState('')
@@ -103,6 +108,27 @@ export function Cadastro() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!deletingCollab) return
+    setDeleteLoading(true)
+    setDeleteError(null)
+
+    const { error } = await supabase
+      .from('collaborators')
+      .delete()
+      .eq('id', deletingCollab.id)
+
+    if (error) {
+      setDeleteError(error.message)
+      setDeleteLoading(false)
+      return
+    }
+
+    setDeletingCollab(null)
+    setDeleteLoading(false)
+    fetchCollaborators()
+  }
+
   const resetForm = () => {
     setName('')
     setEmail('')
@@ -140,14 +166,26 @@ export function Cadastro() {
             <Card key={collab.id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group">
               <CardHeader className="pb-2 flex flex-row items-start justify-between">
                 <CardTitle className="text-lg text-white font-semibold truncate flex-1 pr-2">{collab.name}</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => openEditModal(collab)}
-                  className="h-8 w-8 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-white"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEditModal(collab)}
+                    title="Editar colaborador"
+                    className="h-8 w-8 text-slate-400 hover:text-white"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => { setDeleteError(null); setDeletingCollab(collab) }}
+                    title="Excluir colaborador"
+                    className="h-8 w-8 text-slate-400 hover:text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3 pt-0">
                 <div className="flex items-center text-slate-400 text-sm">
@@ -219,6 +257,64 @@ export function Cadastro() {
                 </Button>
               </div>
             </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Confirmação de exclusão */}
+      {deletingCollab && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-2xl">
+            <CardHeader className="flex flex-row items-start gap-3 pb-3">
+              <div className="p-2 rounded-full bg-red-950/50 border border-red-900/50 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-lg text-white">Excluir colaborador</CardTitle>
+                <p className="text-sm text-slate-400 mt-1">Esta ação não pode ser desfeita.</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-slate-300">
+                Excluir <strong className="text-white">{deletingCollab.name}</strong> do cadastro?
+              </p>
+
+              <div className="text-sm text-slate-400 space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+                <p>Ao excluir:</p>
+                <ul className="list-disc list-inside space-y-1 text-slate-400">
+                  <li>Ele deixa de aparecer para notificações e reuniões</li>
+                  <li>É removido dos participantes de reuniões futuras</li>
+                  <li>O histórico de acessos é preservado, sem o vínculo com ele</li>
+                </ul>
+              </div>
+
+              {deleteError && (
+                <p className="text-sm text-red-400 bg-red-950/30 border border-red-900/50 rounded-md p-3">
+                  {deleteError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <Button
+                  variant="ghost"
+                  onClick={() => setDeletingCollab(null)}
+                  disabled={deleteLoading}
+                  className="text-slate-300 hover:text-white"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {deleteLoading
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <Trash2 className="w-4 h-4 mr-2" />}
+                  Excluir
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
