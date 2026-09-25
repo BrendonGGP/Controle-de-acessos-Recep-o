@@ -108,6 +108,9 @@ jobs:
           create role anon nologin;
           create role authenticated nologin;
           create role service_role nologin bypassrls;
+          -- Role que o PostgREST usa para assumir os demais
+          create role authenticator noinherit login password 'postgres';
+          grant anon, authenticated, service_role to authenticator;
 
           create schema if not exists auth;
           create table auth.users (id uuid primary key, email text);

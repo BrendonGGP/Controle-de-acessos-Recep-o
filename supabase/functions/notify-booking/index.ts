@@ -1,11 +1,25 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Repassa o agendamento para o n8n, que busca reserva e participantes,
+ * monta a mensagem pelo template e dispara via Evolution API.
+ *
+ * Antes esta função consultava o banco, renderizava o template e enviava
+ * para cada participante em paralelo. Toda essa lógica agora vive no
+ * n8n, editável sem deploy.
+ *
+ * Secrets necessários:
+ *   N8N_WEBHOOK_URL    ex: https://n8n.exemplo.com.br/webhook
+ *   N8N_WEBHOOK_TOKEN  token que o n8n valida antes de processar
+ *
+ * Sem N8N_WEBHOOK_URL a função entra em modo simulado: a reserva é
+ * salva normalmente e apenas o envio é ignorado.
+ */
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -19,106 +33,51 @@ serve(async (req: Request) => {
       throw new Error('booking_id é obrigatório.')
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL ou Key não configurada.')
-    }
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
+    const webhookToken = Deno.env.get('N8N_WEBHOOK_TOKEN')
 
-    // Buscar dados do agendamento
-    const { data: booking, error: bookingError } = await supabase
-      .from('room_bookings')
-      .select('title, booking_date, start_time, end_time, rooms(name)')
-      .eq('id', bookingId)
-      .single()
-
-    if (bookingError || !booking) {
-      throw new Error('Agendamento não encontrado.')
+    if (!webhookUrl) {
+      console.warn('N8N_WEBHOOK_URL não configurada. Envio simulado para a reserva', bookingId)
+      return new Response(
+        JSON.stringify({ success: true, simulado: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+      )
     }
 
-    // Buscar participantes
-    const { data: participants, error: partError } = await supabase
-      .from('booking_participants')
-      .select('collaborators(name, phone)')
-      .eq('booking_id', bookingId)
+    const response = await fetch(`${webhookUrl.replace(/\/+$/, '')}/recepcao/booking`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(webhookToken ? { 'x-webhook-token': webhookToken } : {}),
+      },
+      body: JSON.stringify({ booking_id: bookingId }),
+    })
 
-    if (partError || !participants || participants.length === 0) {
-      return new Response(JSON.stringify({ message: 'Nenhum participante para notificar.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
+    const corpo = await response.text()
+
+    if (!response.ok) {
+      console.error('n8n respondeu erro:', { status: response.status, body: corpo.slice(0, 300) })
+      throw new Error(`Falha ao notificar: ${corpo.slice(0, 200)}`)
     }
 
-    // Buscar template de agendamento
-    const { data: templateData } = await supabase
-      .from('message_templates')
-      .select('message')
-      .eq('type', 'agendamento')
-      .is('category', null)
-      .maybeSingle()
+    // O n8n devolve { success, enviados, total } — repassamos para que o
+    // frontend possa exibir quantos participantes foram notificados.
+    let resultado: unknown = { success: true }
+    try {
+      resultado = JSON.parse(corpo)
+    } catch {
+      // resposta sem corpo JSON; mantém o padrão
+    }
 
-    const roomName = (booking.rooms as any)?.name || 'Sala Desconhecida'
-    const waApiUrl = Deno.env.get('WA_API_URL')
-    const waApiToken = Deno.env.get('WA_API_TOKEN')
-
-    // Enviar mensagens em paralelo
-    const results = await Promise.all(
-      participants.map(async (p: any) => {
-        const collab = p.collaborators
-        if (!collab || !collab.phone) return null
-
-        const dataStr = booking.booking_date.split('-').reverse().join('/')
-        const horarioStr = `${booking.start_time.substring(0,5)} às ${booking.end_time.substring(0,5)}`
-        
-        let message = ''
-        if (templateData && templateData.message) {
-          message = templateData.message
-            .replace(/\[NOME_PARTICIPANTE\]/g, collab.name)
-            .replace(/\{\{titulo\}\}/g, booking.title)
-            .replace(/\{\{sala\}\}/g, roomName)
-            .replace(/\{\{data\}\}/g, dataStr)
-            .replace(/\{\{horario\}\}/g, horarioStr)
-        } else {
-          message = `Olá *${collab.name}*! 📅\n\nVocê foi convidado(a) para uma reunião:\n\n*Assunto:* ${booking.title}\n*Sala:* ${roomName}\n*Data:* ${dataStr}\n*Horário:* ${horarioStr}\n\n_Mensagem automática da Portaria Inteligente._`
-        }
-
-        if (!waApiUrl) {
-          console.warn('WA_API_URL não configurada. Simulado:', collab.phone)
-          return { phone: collab.phone, success: true, simulated: true }
-        }
-
-        try {
-          const response = await fetch(waApiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(waApiToken ? { 'Client-Token': waApiToken } : {})
-            },
-            body: JSON.stringify({
-              phone: collab.phone.replace(/\D/g, ''), // Z-API exige apenas números
-              message: message
-            })
-          })
-          const responseText = await response.text()
-          console.log('Resposta Z-API:', { status: response.status, body: responseText })
-          return { phone: collab.phone, success: response.ok, statusCode: response.status, responseBody: responseText }
-        } catch (e: any) {
-          console.error('Erro ao chamar Z-API:', e.message)
-          return { phone: collab.phone, success: false, error: e.message }
-        }
-      })
+    return new Response(
+      JSON.stringify(resultado),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
-
-    return new Response(JSON.stringify({ success: true, results }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
+    console.error('Erro em notify-booking:', error.message)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+    )
   }
 })
