@@ -1,0 +1,281 @@
+{
+  "name": "Recepcao GGP - Notificar Acesso",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recepcao/access",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "recepcao-access"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst esperado = \"__WEBHOOK_TOKEN__\";\nconst recebido = $input.first().json.headers?.['x-webhook-token'];\nif (recebido !== esperado) {\n  throw new Error('Token invalido');\n}\nreturn $input.all();\n"
+      },
+      "id": "validar-token",
+      "name": "Validar Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://afsjoaizrzmbbzquajbe.supabase.co/auth/v1/token?grant_type=password",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"email\": \"n8n.notificacoes@grupogomespires.com.br\", \"password\": \"__SUPABASE_SERVICE_PASSWORD__\"}"
+      },
+      "id": "login-supabase",
+      "name": "Login Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/collaborators?select=name,phone&id=eq.' + $('Webhook').first().json.body.collaborator_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-colaborador",
+      "name": "Buscar Colaborador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message,category&type=eq.' + $('Webhook').first().json.body.action + '&or=(category.eq.' + $('Webhook').first().json.body.category + ',category.is.null)' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-template",
+      "name": "Buscar Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\nconst body = $('Webhook').first().json.body;\nconst c = $('Buscar Colaborador').all().map(i => i.json).find(r => r && r.name);\nif (!c) { throw new Error('Colaborador nao encontrado'); }\n\nconst fone = normalizePhone(c.phone);\nif (!fone) { throw new Error('Telefone invalido: ' + c.phone); }\n\nconst tpls = $('Buscar Template').all().map(i => i.json).filter(r => r && r.message);\nconst especifico = tpls.find(t => t.category === body.category);\nconst generico = tpls.find(t => t.category === null);\nconst tpl = (especifico || generico)?.message\n  || 'Ola *{{nome_colaborador}}*! 🏢\\n\\nO(a) visitante *{{nome_visitante}}* registrou uma *{{acao}}* na recepcao.';\n\nreturn [{ json: {\n  number: fone,\n  text: render(tpl, {\n    nome_colaborador: c.name,\n    nome_visitante: body.visitor_name,\n    acao: body.action,\n  }),\n}}];\n"
+      },
+      "id": "montar-mensagem",
+      "name": "Montar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://evolution-dev.umg.com.br/message/sendText/RecepcaoGGP",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__EVOLUTION_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}"
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nreturn [{ json: { success: true } }];\n"
+      },
+      "id": "resumo",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Token": {
+      "main": [
+        [
+          {
+            "node": "Login Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login Supabase": {
+      "main": [
+        [
+          {
+            "node": "Buscar Colaborador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Colaborador": {
+      "main": [
+        [
+          {
+            "node": "Buscar Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Template": {
+      "main": [
+        [
+          {
+            "node": "Montar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

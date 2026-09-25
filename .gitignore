@@ -48,3 +48,7 @@ Thumbs.db
 *.pem
 .gemini/
 .agents/
+
+# Credenciais temporarias (NUNCA commitar)
+CREDENCIAIS-*.txt
+*credenciais*.txt

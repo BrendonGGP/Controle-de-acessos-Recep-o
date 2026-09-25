@@ -1,0 +1,336 @@
+{
+  "name": "Recepcao GGP - Lembrete de Reuniao",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "a-cada-5-minutos",
+      "name": "A cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://afsjoaizrzmbbzquajbe.supabase.co/auth/v1/token?grant_type=password",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"email\": \"n8n.notificacoes@grupogomespires.com.br\", \"password\": \"__SUPABASE_SERVICE_PASSWORD__\"}"
+      },
+      "id": "login-supabase",
+      "name": "Login Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Horario de Brasilia (UTC-3)\nconst agora = new Date(Date.now() - 3 * 3600 * 1000);\nconst hoje = agora.toISOString().split('T')[0];\n\n// Janela de agora ate 10 min a frente. O workflow roda a cada 5 min,\n// entao qualquer reuniao e vista pelo menos uma vez antes de comecar.\n// Comecar em 0 (e nao em 5) evita o buraco: uma reuniao a 3 min de\n// distancia ficaria fora de uma janela 5-10 e nunca seria avisada.\n// reminder_sent garante que ninguem receba o aviso duas vezes.\nconst ini = agora;\nconst fim = new Date(agora.getTime() + 10 * 60000);\nconst hhmm = d => d.toISOString().substring(11, 16) + ':00';\n\nreturn [{ json: { data: hoje, de: hhmm(ini), ate: hhmm(fim) } }];\n"
+      },
+      "id": "calcular-janela",
+      "name": "Calcular Janela",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/room_bookings?select=id,title,booking_date,start_time,end_time,rooms(name),booking_participants(collaborators(name,phone))&reminder_sent=eq.false&booking_date=eq.' + $json.data + '&start_time=gte.' + $json.de + '&start_time=lt.' + $json.ate }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-reunioes",
+      "name": "Buscar Reunioes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message&type=eq.lembrete&category=is.null",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-template",
+      "name": "Buscar Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\nconst reunioes = $('Buscar Reunioes').all().map(i => i.json).filter(r => r && r.id);\nif (!reunioes.length) { return []; }\n\nconst tplRow = $('Buscar Template').all().map(i => i.json).find(r => r && r.message);\nconst tpl = tplRow?.message\n  || 'Ola *{{nome_colaborador}}*! ⏰\\n\\nSua reuniao comeca em breve:\\n\\n*Assunto:* {{titulo}}\\n*Sala:* {{sala}}\\n*Horario:* {{horario}}';\n\nconst out = [];\nfor (const b of reunioes) {\n  const sala = b.rooms?.name || 'Sala';\n  const data = String(b.booking_date).split('-').reverse().join('/');\n  const horario = String(b.start_time).substring(0,5) + ' as ' + String(b.end_time).substring(0,5);\n  for (const p of (b.booking_participants || [])) {\n    const c = p.collaborators;\n    if (!c) continue;\n    const fone = normalizePhone(c.phone);\n    if (!fone) continue;\n    out.push({ json: {\n      booking_id: b.id,\n      number: fone,\n      text: render(tpl, {\n        nome_colaborador: c.name, titulo: b.title, sala, data, horario,\n      }),\n    }});\n  }\n}\nreturn out;\n"
+      },
+      "id": "montar-lembretes",
+      "name": "Montar Lembretes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://evolution-dev.umg.com.br/message/sendText/RecepcaoGGP",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__EVOLUTION_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}"
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst ids = [...new Set($('Montar Lembretes').all().map(i => i.json.booking_id))];\nreturn ids.map(id => ({ json: { booking_id: id } }));\n"
+      },
+      "id": "ids-unicos",
+      "name": "IDs Unicos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/room_bookings?id=eq.' + $json.booking_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reminder_sent: true }) }}"
+      },
+      "id": "marcar-enviado",
+      "name": "Marcar Enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "A cada 5 minutos": {
+      "main": [
+        [
+          {
+            "node": "Login Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login Supabase": {
+      "main": [
+        [
+          {
+            "node": "Calcular Janela",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Janela": {
+      "main": [
+        [
+          {
+            "node": "Buscar Reunioes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Reunioes": {
+      "main": [
+        [
+          {
+            "node": "Buscar Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Template": {
+      "main": [
+        [
+          {
+            "node": "Montar Lembretes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Lembretes": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "IDs Unicos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IDs Unicos": {
+      "main": [
+        [
+          {
+            "node": "Marcar Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
