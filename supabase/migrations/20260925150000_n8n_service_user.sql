@@ -144,7 +144,10 @@ begin
   if exists (select 1 from pg_roles where rolname = 'n8n_notifier') then
     revoke all on all tables in schema public from n8n_notifier;
     revoke usage on schema public from n8n_notifier;
-    revoke n8n_notifier from authenticator;
+    -- `authenticator` não existe num Postgres puro (CI)
+    if exists (select 1 from pg_roles where rolname = 'authenticator') then
+      revoke n8n_notifier from authenticator;
+    end if;
     drop role n8n_notifier;
   end if;
 end

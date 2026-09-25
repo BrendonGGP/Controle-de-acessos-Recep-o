@@ -28,8 +28,16 @@ begin
 end
 $$;
 
--- O PostgREST precisa poder assumir este role
-grant n8n_notifier to authenticator;
+-- O PostgREST precisa poder assumir este role. O `authenticator` existe
+-- no Supabase, mas não num Postgres puro (como o do CI), então o grant
+-- só roda quando ele estiver presente.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticator') then
+    grant n8n_notifier to authenticator;
+  end if;
+end
+$$;
 
 -- Acesso ao schema (sem isso, nada é visível)
 grant usage on schema public to n8n_notifier;
