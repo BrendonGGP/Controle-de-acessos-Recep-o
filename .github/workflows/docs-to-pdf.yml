@@ -60,7 +60,7 @@ jobs:
           retention-days: 90
 
       - name: Publicar na release docs-latest
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: docs-latest
           name: Documentacao Tecnica (ultima versao)
