@@ -61,6 +61,21 @@ Se preferir uma instância nova com outro nome, atualize o campo `url` dos
 nós "Enviar WhatsApp" nos três workflows — é o único lugar onde o nome
 aparece.
 
+## Marcação de `reminder_sent`
+
+O nó "IDs Unicos" só marca `reminder_sent` para as reuniões cujo envio
+realmente funcionou — ele checa se a Evolution devolveu um `key.id`.
+
+Isso existe porque o nó de envio roda com `continueOnFail`, para que a
+falha de um participante não derrube os demais. Numa versão anterior, o
+passo seguinte marcava todas as reuniões processadas sem olhar o
+resultado: um erro de rede no horário do lembrete marcava como avisado
+algo que ninguém recebeu, e o aviso se perdia em silêncio.
+
+Se ao menos um participante falhar, a reunião **não** é marcada: ela volta
+no ciclo seguinte e quem não recebeu recebe. Quem já havia recebido pode
+levar a mensagem duas vezes — preferível a alguém perder o aviso.
+
 ## Janela dos lembretes
 
 O workflow roda a cada 5 minutos e procura reuniões que começam **de agora
