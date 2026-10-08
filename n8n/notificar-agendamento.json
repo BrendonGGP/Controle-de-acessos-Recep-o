@@ -149,7 +149,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://evolution-dev.umg.com.br/message/sendText/RecepcaoGGP",
+        "url": "https://evolution-evolution-api.u9tmmg.easypanel.host/message/sendText/RecepcaoGGP",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

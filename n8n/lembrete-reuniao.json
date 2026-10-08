@@ -152,7 +152,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://evolution-dev.umg.com.br/message/sendText/RecepcaoGGP",
+        "url": "https://evolution-evolution-api.u9tmmg.easypanel.host/message/sendText/RecepcaoGGP",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -188,7 +188,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst ids = [...new Set($('Montar Lembretes').all().map(i => i.json.booking_id))];\nreturn ids.map(id => ({ json: { booking_id: id } }));\n"
+        "jsCode": "\n// So marca reminder_sent para as reunioes cujo envio REALMENTE funcionou.\n//\n// O no de envio roda com continueOnFail, para que a falha de um\n// participante nao derrube os demais. Antes, este passo marcava todas as\n// reunioes processadas, sem olhar o resultado: um erro de rede no horario\n// do lembrete marcava como avisado algo que ninguem recebeu, e o aviso se\n// perdia em silencio.\n//\n// Agora cruzamos envio e lembrete pelo indice: o n8n preserva a ordem dos\n// itens, entao o i-esimo resultado corresponde ao i-esimo lembrete.\nconst lembretes = $('Montar Lembretes').all();\nconst envios = $input.all();\n\nconst ok = new Set();\nconst falhou = new Set();\n\nenvios.forEach((envio, i) => {\n  const bookingId = lembretes[i]?.json?.booking_id;\n  if (!bookingId) return;\n  // Um envio bem-sucedido traz key.id da Evolution; um erro traz .error\n  const sucesso = !envio.json?.error && envio.json?.key?.id;\n  (sucesso ? ok : falhou).add(bookingId);\n});\n\n// Se ao menos um participante falhou, nao marcamos a reuniao: ela volta\n// no proximo ciclo e quem nao recebeu recebe. Quem ja recebeu pode levar\n// a mensagem duas vezes -- preferivel a alguem perder o aviso.\nconst marcar = [...ok].filter(id => !falhou.has(id));\n\nif (falhou.size) {\n  console.warn('Lembretes com falha de envio, serao retentados:', [...falhou]);\n}\n\nreturn marcar.map(id => ({ json: { booking_id: id } }));\n"
       },
       "id": "ids-unicos",
       "name": "IDs Unicos",
