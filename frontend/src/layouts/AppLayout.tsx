@@ -10,6 +10,7 @@ import {
   Menu
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LogoGGP } from '@/components/LogoGGP'
 import { useState, useRef } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
@@ -43,23 +44,11 @@ export function AppLayout() {
   const filteredNav = navItems.filter(item => item.roles.includes(role || ''))
 
   return (
-    <div className="h-screen bg-slate-950 flex overflow-hidden">
+    <div className="h-screen bg-[var(--color-bg)] flex overflow-hidden">
       {/* Sidebar (Desktop) */}
-      <aside ref={sidebarRef} className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800">
-        <div className="p-6 flex items-center justify-center border-b border-slate-800/50">
-          <div className="logo-anim flex flex-col items-center select-none">
-            <div className="text-4xl font-bold tracking-tighter text-white relative flex leading-none">
-              <span>G</span>
-              <span className="relative">
-                G
-                <div className="absolute top-[46%] -left-[40%] w-[170%] h-[4px] bg-[#00819c] z-10"></div>
-              </span>
-              <span className="text-[#00819c]">P</span>
-            </div>
-            <span className="text-[10px] font-light tracking-[0.15em] text-white mt-2 uppercase text-center w-full">
-              Grupo Gomes Pires
-            </span>
-          </div>
+      <aside ref={sidebarRef} className="hidden md:flex flex-col w-64 bg-[var(--color-surface)] border-r border-[var(--color-border)]">
+        <div className="p-6 flex items-center justify-center border-b border-[var(--color-border)]">
+          <LogoGGP altura={40} comAssinatura className="logo-anim" />
         </div>
 
         <nav className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 space-y-2">
@@ -71,8 +60,8 @@ export function AppLayout() {
                 to={item.href}
                 className={`nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                   isActive 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20' 
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                    ? 'bg-[var(--color-primary)] text-white shadow-md' 
+                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-preenchimento-2)]/50 hover:text-[var(--color-text)]'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -82,14 +71,14 @@ export function AppLayout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-[var(--color-border)]">
           <div className="mb-4 px-2">
-            <p className="text-sm font-medium text-white truncate">{user?.email}</p>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">{role}</p>
+            <p className="text-sm font-medium text-[var(--color-text)] truncate">{user?.email}</p>
+            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mt-1">{role}</p>
           </div>
           <Button 
             variant="ghost" 
-            className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-red-950/30"
+            className="w-full justify-start text-[var(--color-text-secondary)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]"
             onClick={signOut}
           >
             <LogOut className="w-5 h-5 mr-3" />
@@ -101,28 +90,21 @@ export function AppLayout() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+        <header className="md:hidden flex items-center justify-between p-4 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
           <div className="flex items-center select-none">
-            <div className="text-2xl font-bold tracking-tighter text-white relative flex leading-none">
-              <span>G</span>
-              <span className="relative">
-                G
-                <div className="absolute top-[46%] -left-[40%] w-[170%] h-[3px] bg-[#00819c] z-10"></div>
-              </span>
-              <span className="text-[#00819c]">P</span>
-            </div>
-            <span className="text-[8px] font-light tracking-[0.1em] text-slate-400 ml-2 uppercase border-l border-slate-700 pl-2">
+            <LogoGGP altura={24} />
+            <span className="text-[8px] font-light tracking-[0.1em] text-[var(--color-text-secondary)] ml-2 uppercase border-l border-[var(--color-border)] pl-2">
               Grupo<br/>Gomes Pires
             </span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <Menu className="w-6 h-6 text-slate-300" />
+            <Menu className="w-6 h-6 text-[var(--color-text-secondary)]" />
           </Button>
         </header>
 
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-4 space-y-2 absolute top-16 w-full z-50 shadow-xl">
+          <div className="md:hidden bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-4 space-y-2 absolute top-16 w-full z-50 shadow-xl">
             {filteredNav.map((item) => (
               <Link
                 key={item.name}
@@ -130,16 +112,16 @@ export function AppLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-3 py-3 rounded-lg ${
                   location.pathname.startsWith(item.href)
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400'
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'text-[var(--color-text-secondary)]'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             ))}
-            <div className="pt-4 mt-2 border-t border-slate-800">
-               <Button variant="ghost" className="w-full justify-start text-red-400" onClick={signOut}>
+            <div className="pt-4 mt-2 border-t border-[var(--color-border)]">
+               <Button variant="ghost" className="w-full justify-start text-[var(--color-danger)]" onClick={signOut}>
                 <LogOut className="w-5 h-5 mr-3" />
                 Sair
               </Button>

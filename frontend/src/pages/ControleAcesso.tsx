@@ -139,33 +139,33 @@ export function ControleAcesso() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Controle de Acesso</h1>
-          <p className="text-slate-400">Registre entradas e saídas de visitantes e prestadores.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight">Controle de Acesso</h1>
+          <p className="text-[var(--color-text-secondary)]">Registre entradas e saídas de visitantes e prestadores.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20">
+        <Button onClick={() => setIsModalOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white shadow-lg">
           <ArrowRightLeft className="w-4 h-4 mr-2" />
           Registrar Acesso
         </Button>
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
         <CardHeader>
-          <CardTitle className="text-lg text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-blue-400" />
+          <CardTitle className="text-lg text-[var(--color-text)] flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-[var(--color-primary)]" />
             Últimos Registros
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center p-8">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
             </div>
           ) : logs.length === 0 ? (
-            <p className="text-slate-400 text-center p-8">Nenhum registro encontrado.</p>
+            <p className="text-[var(--color-text-secondary)] text-center p-8">Nenhum registro encontrado.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-400 uppercase bg-slate-950/50">
+                <thead className="text-xs text-[var(--color-text-secondary)] uppercase bg-[var(--color-preenchimento)]">
                   <tr>
                     <th className="px-4 py-3 rounded-tl-lg">Data/Hora</th>
                     <th className="px-4 py-3">Ação</th>
@@ -176,20 +176,20 @@ export function ControleAcesso() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                      <td className="px-4 py-3 text-slate-300">
+                    <tr key={log.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-nav-hover)] transition-colors">
+                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                         {new Date(log.created_at).toLocaleString('pt-BR')}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          log.action === 'entrada' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          log.action === 'entrada' ? 'bg-[var(--color-sucesso)]/10 text-[var(--color-sucesso)] border border-emerald-500/20' : 'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-rose-500/20'
                         }`}>
                           {log.action.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-white font-medium">{log.visitor_name}</td>
-                      <td className="px-4 py-3 text-slate-400">{formatCategory(log.category)}</td>
-                      <td className="px-4 py-3 text-slate-400">{log.document || '-'}</td>
+                      <td className="px-4 py-3 text-[var(--color-text)] font-medium">{log.visitor_name}</td>
+                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">{formatCategory(log.category)}</td>
+                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">{log.document || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -201,41 +201,41 @@ export function ControleAcesso() {
 
       {/* Modal Customizado */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="w-full max-w-lg bg-slate-900 border-slate-700 shadow-2xl max-h-[90vh] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-              <CardTitle className="text-xl text-white">Registrar Acesso</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
+          <Card className="w-full max-w-lg bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl max-h-[90vh] flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
+              <CardTitle className="text-xl text-[var(--color-text)]">Registrar Acesso</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                 <X className="w-5 h-5" />
               </Button>
             </CardHeader>
             <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4">
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm">
+                <div className="p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md text-[var(--color-danger)] text-sm">
                   {error}
                 </div>
               )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="action" className="text-slate-300">Ação *</Label>
+                  <Label htmlFor="action" className="text-[var(--color-text-secondary)]">Ação *</Label>
                   <select 
                     id="action" 
                     value={action} 
                     onChange={e => setAction(e.target.value)} 
-                    className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   >
                     <option value="entrada">Entrada</option>
                     <option value="saida">Saída</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-slate-300">Categoria *</Label>
+                  <Label htmlFor="category" className="text-[var(--color-text-secondary)]">Categoria *</Label>
                   <select 
                     id="category" 
                     value={category} 
                     onChange={e => setCategory(e.target.value)} 
-                    className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   >
                     <option value="visitas_reunioes">Visitas/Reuniões</option>
                     <option value="prestadores_servico">Prestadores de Serviço</option>
@@ -248,52 +248,52 @@ export function ControleAcesso() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="visitorName" className="text-slate-300">Nome do Visitante *</Label>
+                <Label htmlFor="visitorName" className="text-[var(--color-text-secondary)]">Nome do Visitante *</Label>
                 <div className="relative">
-                  <UserCheck className="absolute left-3 top-2.5 h-5 w-5 text-slate-500" />
-                  <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required className="pl-10 bg-slate-950 border-slate-700 text-white" placeholder="Nome completo" />
+                  <UserCheck className="absolute left-3 top-2.5 h-5 w-5 text-[var(--color-text-muted)]" />
+                  <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required className="pl-10 bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" placeholder="Nome completo" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="document" className="text-slate-300">Documento (RG/CPF)</Label>
-                  <Input id="document" type="tel" inputMode="numeric" value={document} onChange={e => setDocument(e.target.value)} className="bg-slate-950 border-slate-700 text-white" />
+                  <Label htmlFor="document" className="text-[var(--color-text-secondary)]">Documento (RG/CPF)</Label>
+                  <Input id="document" type="tel" inputMode="numeric" value={document} onChange={e => setDocument(e.target.value)} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-slate-300">Telefone</Label>
-                  <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Ex: (11) 99999-9999" className="bg-slate-950 border-slate-700 text-white" />
+                  <Label htmlFor="phone" className="text-[var(--color-text-secondary)]">Telefone</Label>
+                  <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Ex: (11) 99999-9999" className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="observations" className="text-slate-300">Observações</Label>
-                <Input id="observations" value={observations} onChange={e => setObservations(e.target.value)} className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="observations" className="text-[var(--color-text-secondary)]">Observações</Label>
+                <Input id="observations" value={observations} onChange={e => setObservations(e.target.value)} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-3">
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="checkbox" 
                     checked={notify}
                     onChange={(e) => setNotify(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                   />
-                  <span className="text-slate-300 text-sm flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-amber-500" />
+                  <span className="text-[var(--color-text-secondary)] text-sm flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-[#b45309]" />
                     Enviar aviso via WhatsApp para colaborador
                   </span>
                 </label>
 
                 {notify && (
-                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                    <Label htmlFor="collaborator" className="text-slate-300">Selecione o Colaborador *</Label>
+                  <div className="space-y-2 animate-slide-down">
+                    <Label htmlFor="collaborator" className="text-[var(--color-text-secondary)]">Selecione o Colaborador *</Label>
                     <select 
                       id="collaborator" 
                       value={collaboratorId} 
                       onChange={e => setCollaboratorId(e.target.value)} 
                       required={notify}
-                      className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                     >
                       <option value="">Selecione...</option>
                       {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -302,11 +302,11 @@ export function ControleAcesso() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={formLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={formLoading} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white">
                   {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Registrar'}
                 </Button>
               </div>
