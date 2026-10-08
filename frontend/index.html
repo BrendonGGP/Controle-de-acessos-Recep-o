@@ -1,10 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <!-- As duas fontes do primeiro quadro: Nunito (títulos) e Inter (texto).
+         As demais faces carregam pelo brand-fonts.css, sem bloquear a pintura. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/Nunito-var-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-var-latin.woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/brand-fonts.css" />
+
+    <title>Recepção GGP</title>
   </head>
   <body>
     <div id="root"></div>

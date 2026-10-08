@@ -142,10 +142,10 @@ export function Cadastro() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Colaboradores</h1>
-          <p className="text-slate-400">Gerencie os colaboradores para receberem notificações.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight">Colaboradores</h1>
+          <p className="text-[var(--color-text-secondary)]">Gerencie os colaboradores para receberem notificações.</p>
         </div>
-        <Button onClick={openNewModal} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20">
+        <Button onClick={openNewModal} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white shadow-lg">
           <UserPlus className="w-4 h-4 mr-2" />
           Novo Colaborador
         </Button>
@@ -154,25 +154,25 @@ export function Cadastro() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {loading ? (
           <div className="col-span-full flex justify-center p-12">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
           </div>
         ) : collaborators.length === 0 ? (
-          <div className="col-span-full text-center p-12 bg-slate-900/50 rounded-xl border border-slate-800 border-dashed">
-            <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-400">Nenhum colaborador cadastrado.</p>
+          <div className="col-span-full text-center p-12 bg-[var(--color-preenchimento)] rounded-xl border border-[var(--color-border)] border-dashed">
+            <Users className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-3" />
+            <p className="text-[var(--color-text-secondary)]">Nenhum colaborador cadastrado.</p>
           </div>
         ) : (
           collaborators.map((collab) => (
-            <Card key={collab.id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group">
+            <Card key={collab.id} className="bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-primary)]/30 transition-colors group">
               <CardHeader className="pb-2 flex flex-row items-start justify-between">
-                <CardTitle className="text-lg text-white font-semibold truncate flex-1 pr-2">{collab.name}</CardTitle>
+                <CardTitle className="text-lg text-[var(--color-text)] font-semibold truncate flex-1 pr-2">{collab.name}</CardTitle>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => openEditModal(collab)}
                     title="Editar colaborador"
-                    className="h-8 w-8 text-slate-400 hover:text-white"
+                    className="h-8 w-8 text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
@@ -181,26 +181,26 @@ export function Cadastro() {
                     size="icon"
                     onClick={() => { setDeleteError(null); setDeletingCollab(collab) }}
                     title="Excluir colaborador"
-                    className="h-8 w-8 text-slate-400 hover:text-red-400"
+                    className="h-8 w-8 text-[var(--color-text-secondary)] hover:text-[var(--color-danger)]"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 pt-0">
-                <div className="flex items-center text-slate-400 text-sm">
-                  <Phone className="w-4 h-4 mr-2 text-slate-500" />
+                <div className="flex items-center text-[var(--color-text-secondary)] text-sm">
+                  <Phone className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
                   {formatPhone(collab.phone)}
                 </div>
                 {collab.email && (
-                  <div className="flex items-center text-slate-400 text-sm">
-                    <Mail className="w-4 h-4 mr-2 text-slate-500" />
+                  <div className="flex items-center text-[var(--color-text-secondary)] text-sm">
+                    <Mail className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
                     <span className="truncate">{collab.email}</span>
                   </div>
                 )}
                 {collab.cpf && (
-                  <div className="flex items-center text-slate-400 text-sm">
-                    <FileText className="w-4 h-4 mr-2 text-slate-500" />
+                  <div className="flex items-center text-[var(--color-text-secondary)] text-sm">
+                    <FileText className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
                     {formatCPF(collab.cpf)}
                   </div>
                 )}
@@ -212,47 +212,47 @@ export function Cadastro() {
 
       {/* Modal Customizado */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-slate-900 border-slate-700 shadow-2xl flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-              <CardTitle className="text-xl text-white">{editingId ? 'Editar Colaborador' : 'Cadastrar Colaborador'}</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
+          <Card className="w-full max-w-md bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
+              <CardTitle className="text-xl text-[var(--color-text)]">{editingId ? 'Editar Colaborador' : 'Cadastrar Colaborador'}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                 <X className="w-5 h-5" />
               </Button>
             </CardHeader>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm">
+                <div className="p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md text-[var(--color-danger)] text-sm">
                   {error}
                 </div>
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-300">Nome Completo *</Label>
-                <Input id="name" value={name} onChange={e => setName(formatName(e.target.value))} required className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="name" className="text-[var(--color-text-secondary)]">Nome Completo *</Label>
+                <Input id="name" value={name} onChange={e => setName(formatName(e.target.value))} required className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-slate-300">Telefone (WhatsApp) *</Label>
-                <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} required placeholder="Ex: (11) 99999-9999" className="bg-slate-950 border-slate-700 text-white" />
-                <p className="text-xs text-slate-500">O sistema irá formatar e incluir o 55 automaticamente.</p>
+                <Label htmlFor="phone" className="text-[var(--color-text-secondary)]">Telefone (WhatsApp) *</Label>
+                <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} required placeholder="Ex: (11) 99999-9999" className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
+                <p className="text-xs text-[var(--color-text-muted)]">O sistema irá formatar e incluir o 55 automaticamente.</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="email" className="text-[var(--color-text-secondary)]">E-mail</Label>
+                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf" className="text-slate-300">CPF</Label>
-                <Input id="cpf" type="tel" inputMode="numeric" value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} maxLength={14} className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="cpf" className="text-[var(--color-text-secondary)]">CPF</Label>
+                <Input id="cpf" type="tel" inputMode="numeric" value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} maxLength={14} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3 mt-6">
-                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-3 mt-6">
+                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={formLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={formLoading} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white">
                   {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}
                 </Button>
               </div>
@@ -263,25 +263,25 @@ export function Cadastro() {
 
       {/* Confirmação de exclusão */}
       {deletingCollab && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
+          <Card className="w-full max-w-md bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl">
             <CardHeader className="flex flex-row items-start gap-3 pb-3">
-              <div className="p-2 rounded-full bg-red-950/50 border border-red-900/50 shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+              <div className="p-2 rounded-full bg-red-950/50 border border-[var(--color-danger)]/20 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-[var(--color-danger)]" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-lg text-white">Excluir colaborador</CardTitle>
-                <p className="text-sm text-slate-400 mt-1">Esta ação não pode ser desfeita.</p>
+                <CardTitle className="text-lg text-[var(--color-text)]">Excluir colaborador</CardTitle>
+                <p className="text-sm text-[var(--color-text-secondary)] mt-1">Esta ação não pode ser desfeita.</p>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-300">
-                Excluir <strong className="text-white">{deletingCollab.name}</strong> do cadastro?
+              <p className="text-[var(--color-text-secondary)]">
+                Excluir <strong className="text-[var(--color-text)]">{deletingCollab.name}</strong> do cadastro?
               </p>
 
-              <div className="text-sm text-slate-400 space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div className="text-sm text-[var(--color-text-secondary)] space-y-1.5 p-3 rounded-lg bg-[var(--color-preenchimento)] border border-[var(--color-border)]">
                 <p>Ao excluir:</p>
-                <ul className="list-disc list-inside space-y-1 text-slate-400">
+                <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
                   <li>Ele deixa de aparecer para notificações e reuniões</li>
                   <li>É removido dos participantes de reuniões futuras</li>
                   <li>O histórico de acessos é preservado, sem o vínculo com ele</li>
@@ -289,7 +289,7 @@ export function Cadastro() {
               </div>
 
               {deleteError && (
-                <p className="text-sm text-red-400 bg-red-950/30 border border-red-900/50 rounded-md p-3">
+                <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md p-3">
                   {deleteError}
                 </p>
               )}
@@ -299,14 +299,14 @@ export function Cadastro() {
                   variant="ghost"
                   onClick={() => setDeletingCollab(null)}
                   disabled={deleteLoading}
-                  className="text-slate-300 hover:text-white"
+                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
                 >
                   Cancelar
                 </Button>
                 <Button
                   onClick={handleDelete}
                   disabled={deleteLoading}
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="bg-red-600 hover:bg-red-700 text-[var(--color-text)]"
                 >
                   {deleteLoading
                     ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />

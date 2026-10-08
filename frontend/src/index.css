@@ -1,18 +1,720 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+/* Raio de canto da marca: 14px (--radius do export). Redefinir o token do
+   Tailwind mantem `rounded-xl` como unica forma de escrever isso no JSX. */
+@theme {
+  --radius-xl: 14px;
+
+  /* Tokens no padrao shadcn, apontando para as cores da marca.
+     Os componentes de biblioteca (smoothui) escrevem `bg-background`,
+     `text-muted-foreground`, `border-border`... Mapear aqui deixa esses
+     componentes nascerem com a cara do app, sem precisar reescrever classe por
+     classe dentro deles — e sem criar uma segunda paleta paralela. */
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-text);
+  --color-muted: var(--color-nav-hover);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-destructive: var(--color-danger);
+  /* Esta mora aqui, e nao no bloco da marca, porque precisa existir como token
+     do Tailwind para a classe `border-border` funcionar. O `var(--color-border)`
+     usado no resto do app continua lendo exatamente este valor. */
+  --color-border: oklch(0.925 0.006 258);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MARCA GGPost — azul institucional (logotipo), petróleo (ação e
+   estado), verde (presença online e comunicado oficial). Sem degradê.
+   Linguagem completa em docs/produto/design.md.
+
+   `:root` e `.theme-light` compartilham o mesmo bloco de propósito:
+   qualquer que seja a camada ativa, os valores são idênticos. O modo
+   escuro (`.dark` no <html>, ver lib/tema.ts) redefine os mesmos tokens
+   logo abaixo; componente nenhum escolhe cor por tema.
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+.theme-light {
+  color-scheme: light;
+
+  /* Tinta das sobreposicoes (hover, trilho, veu leve) em canais RGB, para
+     a opacidade ficar no uso: `bg-[rgb(var(--tinta)/.055)]`. No claro
+     escurece o que esta por baixo; no escuro, clareia. */
+  --tinta: 16 24 40;
+
+  /* ── Marca ── */
+  --marca-azul: oklch(0.291 0.103 256.9);   /* #00295d */
+  --marca-verde: oklch(0.746 0.192 150.5);  /* #29cd68 */
+  /* "GG" e "ost" do logotipo. */
+  --marca-grafite: #3E4347;
+
+  /* ── Cor principal — o petróleo do P do logotipo, um degrau mais fundo: o
+        exato (#37809D) dá 4,4:1 com texto branco, este passa em AA (4,9:1)
+        sem mudar a cor a olho nu. O azul institucional fica só na marca. ── */
+  --color-primary: oklch(0.54 0.085 227.3);   /* #2e7895 */
+  --color-primary-hover: oklch(0.48 0.085 227.3);
+  /* Fundo do botao principal sob o ponteiro. No claro e o proprio hover; no
+     escuro o hover clareia (vira cor de texto) e o botao precisa escurecer. */
+  --color-primary-pressionado: var(--color-primary-hover);
+  --color-primary-light: oklch(0.62 0.075 227.3);
+  --color-primary-bg: oklch(0.958 0.014 227.3);
+  --color-primary-bg-hover: #DCEBF1;
+
+  /* ── Superfícies ──
+        Fundo cinza-claro com a grade de pontos do login (ver `body`); o
+        conteúdo mora em folhas brancas por cima. */
+  --color-bg: #F2F3F5;
+  --color-surface: #ffffff;
+  --color-nav: #ffffff;
+  --color-nav-text: #3E4347;
+  --color-nav-hover: #F1F2F4;
+  /* Preenchimentos dentro de uma folha (campo, chip, linha de dado). */
+  --color-preenchimento: #F4F5F7;
+  --color-preenchimento-2: #ECEEF1;
+  --color-preenchimento-3: #E3E6EA;
+  /* Lente: a pilula do item escolhido (navegacao, segmentado, status). */
+  --color-lente: rgba(255, 255, 255, .95);
+  --sombra-lente: inset 0 1px 0 #fff, 0 0 0 .5px rgba(16, 24, 40, .09), 0 1px 2px rgba(16, 24, 40, .07), 0 6px 14px -6px rgba(16, 24, 40, .18);
+  /* Cor chapada do vidro da barra, para contornar o que encosta nele. */
+  --color-vidro-opaco: #F7F8FA;
+  /* Veu atras de modal. */
+  --color-veu: rgba(16, 24, 40, .28);
+  /* Botao de envio desabilitado. */
+  --color-desativado: #C5D3DA;
+  /* Filete interno de folha: divide sem desenhar caixa. */
+  --color-filete: rgba(16, 24, 40, 0.075);
+  /* --color-border vive no bloco @theme la em cima (token do Tailwind). */
+
+  /* ── Texto ── */
+  --color-text: #1D2125;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: oklch(0.62 0.018 258);
+  --color-icone: #5D646E;
+
+  /* ── Presença ── */
+  --color-online: var(--marca-verde);
+  --color-reuniao: oklch(0.55 0.19 25);
+  --color-focado: oklch(0.70 0.14 70);
+  --color-ausente: oklch(0.72 0.015 258);
+
+  /* ── Estados semânticos — fora do logotipo, exigem legibilidade própria.
+        O verde de sucesso é o verde da marca escurecido até passar em AA. ── */
+  --color-oficial: var(--color-primary);
+  --color-oficial-bg: var(--color-primary-bg);
+  --color-atencao: oklch(0.62 0.14 70);
+  /* Faixa de aviso (manutenção, mudança de horário): tinta âmbar calma e
+     texto âmbar escuro, que passa AA sobre ela. */
+  --color-atencao-bg: #FBF4E4;
+  --color-atencao-texto: #8A5A00;
+  --color-atencao-forte: #5C3D00;
+  --color-danger: oklch(0.55 0.19 25);
+  --color-danger-bg: oklch(0.968 0.014 25);
+  --color-sucesso: oklch(0.55 0.14 150.5);
+
+  /* ── Chat ── */
+  --color-bolha-propria: var(--color-primary);
+  --color-bolha-propria-texto: #ffffff;
+  --color-bolha-outro: oklch(0.955 0.008 250);
+  --color-bolha-outro-texto: oklch(0.24 0.015 258);
+
+  /* ── Avisos da empresa ──
+        Severidade PROPORCIONAL: informativo quase sem cor, atencao no ponto,
+        critico na tinta e no contorno. */
+  --color-alerta-critico: oklch(0.55 0.19 25);
+  --color-alerta-critico-forte: oklch(0.42 0.16 25);
+  --color-alerta-atencao: oklch(0.62 0.14 70);
+  /* Neutro do anel do informativo: perceptivel de perto, mudo a distancia. */
+  --color-alerta-info: oklch(0.80 0.012 258);
+
+  /* ── Graficos: petroleo primeiro, verde da marca depois; rotulos neutros ── */
+  --chart-1: oklch(0.54 0.085 227.3);
+  --chart-2: oklch(0.746 0.192 150.5);
+  --color-grafico-neutro: #DDE2E7;
+  --color-tick: var(--color-text-secondary);
+
+  /* ── Geometria e movimento ── */
+  /* Folha de CONTEUDO (post, painel, perfil): raio grande, so sombra. */
+  --raio-cartao: 24px;
+  /* Sobreposicao (modal, painel lateral, ilha): mais macia que o conteudo que
+     ela cobre. Raios concentricos: ilha 28 = lente 20 + respiro 8. */
+  --radius-folha: 28px;
+  --motion-rapido: .18s;
+  --curva-mola: cubic-bezier(.34, 1.56, .64, 1);
+  --curva-saida: cubic-bezier(.16, 1, .3, 1);
+
+  /* Folha de conteudo: so sombra, nunca borda junto. Contato curto + luz
+     ambiente longa e diluida. */
+  --sombra-folha: 0 1px 2px rgba(16, 24, 40, .035), 0 10px 30px -16px rgba(16, 24, 40, .12);
+
+  /* ── Vidro — material da CAMADA DE NAVEGAÇÃO ──
+        Ilha lateral, porta-crachá, cápsulas da barra, menus, modais, painel
+        do painel. Cartão e aviso são CONTEÚDO e ficam sólidos. */
+  /* Ilha e porta-crachá ficam sobre a grade de pontos, nunca sobre texto:
+     vidro claro e pouco desfoque, para os pontos aparecerem difusos. */
+  --vidro-fundo: rgba(246, 247, 249, .6);
+  --vidro-desfoque: 4px;
+  /* Barra: o conteúdo rola por baixo, então desfoca bem mais. */
+  --vidro-fundo-barra: rgba(246, 247, 249, .68);
+  --vidro-desfoque-barra: 20px;
+  /* Sobreposição com texto longo (menu, modal, painel lateral). */
+  --vidro-fundo-denso: rgba(248, 249, 250, .88);
+  --vidro-desfoque-denso: 30px;
+  --vidro-saturacao: 180%;
+  /* A aresta do vidro e desenhada pela sombra (`--vidro-sombra`): luz em cima,
+     anel de meio pixel e elevação. A borda fica transparente para quem ainda
+     declara `border` não desenhar a mesma aresta duas vezes. */
+  --vidro-borda: transparent;
+  --vidro-sombra:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 0 0 1px rgba(255, 255, 255, .5),
+    0 0 0 .5px rgba(16, 24, 40, .11),
+    0 2px 6px -2px rgba(16, 24, 40, .06),
+    0 16px 36px -14px rgba(16, 24, 40, .22);
+
+  /* ── Elevacao de superficie clicavel (resposta ao ponteiro) ── */
+  --elev-2: 0 0 0 .5px rgba(16, 24, 40, .08), 0 2px 6px -2px rgba(16, 24, 40, .12), 0 10px 24px -10px rgba(16, 24, 40, .18);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODO ESCURO — os mesmos papeis, outra luz.
+   Neutros frios (matiz 258, o do texto claro); o petroleo sobe um
+   degrau para continuar legivel sobre a folha escura. Sombra quase
+   nao desenha no escuro: quem separa as camadas e a superficie
+   ficando MAIS CLARA conforme sobe (fundo < folha < preenchimento <
+   lente), e a aresta do vidro vira um fio de luz.
+   ═══════════════════════════════════════════════════════════════ */
+.dark {
   color-scheme: dark;
+  --tinta: 255 255 255;
+
+  --marca-grafite: #E6E9EC;
+
+  /* Petroleo: o ponto em que texto branco por cima e ele sobre a folha
+     escura ficam com contraste parecido (~4:1); o hover, que tambem e cor
+     de texto sobre `primary-bg`, clareia. */
+  --color-primary: oklch(0.6 0.09 227.3);
+  --color-primary-hover: oklch(0.76 0.075 227.3);
+  --color-primary-pressionado: oklch(0.54 0.09 227.3);
+  --color-primary-light: oklch(0.7 0.075 227.3);
+  --color-primary-bg: oklch(0.29 0.045 227.3);
+  --color-primary-bg-hover: oklch(0.33 0.055 227.3);
+
+  --color-bg: #0F1215;
+  --color-surface: #181C21;
+  --color-nav: #181C21;
+  --color-nav-text: #C4CAD1;
+  --color-nav-hover: #22272D;
+  --color-preenchimento: #20252B;
+  --color-preenchimento-2: #272D34;
+  --color-preenchimento-3: #30363E;
+  --color-filete: rgba(255, 255, 255, .08);
+  --color-border: oklch(0.31 0.01 258);
+  --color-lente: rgba(60, 67, 76, .9);
+  --sombra-lente: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 .5px rgba(0, 0, 0, .5), 0 1px 2px rgba(0, 0, 0, .3), 0 6px 14px -6px rgba(0, 0, 0, .5);
+  --color-vidro-opaco: #1E2228;
+  --color-veu: rgba(0, 0, 0, .55);
+  --color-desativado: #34444C;
+
+  --color-text: #E9ECEF;
+  --color-text-secondary: #9BA3AD;
+  --color-text-muted: oklch(0.6 0.015 258);
+  --color-icone: #A4ACB6;
+
+  --color-reuniao: oklch(0.66 0.18 25);
+  --color-focado: oklch(0.76 0.14 70);
+  --color-ausente: oklch(0.55 0.015 258);
+
+  --color-atencao: oklch(0.76 0.14 70);
+  --color-atencao-bg: #2A2314;
+  --color-atencao-texto: #E5B84E;
+  --color-atencao-forte: #F4D58E;
+  --color-danger: oklch(0.68 0.17 25);
+  --color-danger-bg: oklch(0.27 0.06 25);
+  --color-sucesso: oklch(0.72 0.16 150.5);
+
+  --color-bolha-propria-texto: #ffffff;
+  --color-bolha-outro: #252A31;
+  --color-bolha-outro-texto: #E9ECEF;
+
+  --color-alerta-critico: oklch(0.68 0.17 25);
+  --color-alerta-critico-forte: oklch(0.8 0.11 25);
+  --color-alerta-atencao: oklch(0.76 0.14 70);
+  --color-alerta-info: oklch(0.45 0.012 258);
+
+  --chart-1: oklch(0.6 0.09 227.3);
+  --color-grafico-neutro: #353B42;
+
+  --sombra-folha: 0 0 0 .5px rgba(255, 255, 255, .05), 0 10px 30px -16px rgba(0, 0, 0, .6);
+
+  --vidro-fundo: rgba(30, 34, 40, .6);
+  --vidro-fundo-barra: rgba(30, 34, 40, .7);
+  --vidro-fundo-denso: rgba(26, 30, 35, .9);
+  --vidro-saturacao: 140%;
+  --vidro-sombra:
+    inset 0 1px 0 rgba(255, 255, 255, .07),
+    inset 0 0 0 1px rgba(255, 255, 255, .04),
+    0 0 0 .5px rgba(0, 0, 0, .6),
+    0 2px 6px -2px rgba(0, 0, 0, .3),
+    0 16px 36px -14px rgba(0, 0, 0, .6);
+
+  --elev-2: 0 0 0 .5px rgba(255, 255, 255, .08), 0 2px 6px -2px rgba(0, 0, 0, .4), 0 10px 24px -10px rgba(0, 0, 0, .6);
 }
 
-/* Força os ícones nativos de calendário e relógio a ficarem brancos */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) brightness(0.8);
-  cursor: pointer;
+
+/* ── Cor padrão de borda ──
+   O Tailwind 4 mudou o default de `border-color` para `currentColor` (no v3
+   era gray-200). Sem este bloco, qualquer `border-*`/`divide-*` escrito sem
+   cor explícita herda a cor do TEXTO — o que produz linhas pretas grossas em
+   tabelas, listas e separadores. Restaura o padrão sutil, acompanhando o tema.
+   (Recomendação do guia oficial de upgrade v3 -> v4 do Tailwind.) */
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+  }
 }
+
+/* Dentro do app quem rola e a area de conteudo do Layout (`data-rolagem`).
+   A raiz nao quica: o Safari faz o elastico ate em pagina que nao rola, e
+   ele arrastaria a ilha, o crachá e a barra. A tela de entrada nao tem a area
+   e continua com o comportamento do navegador. */
+html:has([data-rolagem]) {
+  overscroll-behavior: none;
+}
+
+/* Grade de pontos do login como fundo do app inteiro — PARADA, so textura.
+   Um SVG de 22px repetido e fixo na viewport: nada de canvas nem de laço de
+   animação, o fundo custa zero depois de pintado. Os pontos ficam um degrau
+   mais claros que no login (#D0D5DC): aqui ha texto pequeno direto sobre o
+   fundo (sobretitulos, rotulos), e o ponto escuro furava as letras. Contraste
+   mais baixo, e nao desfoque: ponto borrado vira mancha. */
+body {
+  background-color: var(--color-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='11' cy='11' r='1.3' fill='%23DCE0E5'/%3E%3C/svg%3E");
+  background-size: 22px 22px;
+  background-attachment: fixed;
+  color: var(--color-text);
+  @apply antialiased;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+/* A grade escura: o ponto e um degrau acima do fundo, nao um furo claro. */
+.dark body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='11' cy='11' r='1.3' fill='%23242930'/%3E%3C/svg%3E");
+}
+
+/* ── Troca de tema: circulo que se abre a partir do botao ──
+   O navegador fotografa a pagina antes e depois (View Transitions) e
+   lib/tema.ts anima o recorte da foto nova. Sem o cross-fade padrao, que
+   misturaria as duas fotos por baixo do circulo. So vale durante a troca:
+   a classe sai quando a transicao termina. As transicoes CSS ficam
+   desligadas nesse meio-tempo: a foto "depois" e ao vivo, e centenas de
+   cores animando dentro dela travam o circulo. */
+:root.trocando-tema::view-transition-old(root),
+:root.trocando-tema::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.trocando-tema *,
+:root.trocando-tema *::before,
+:root.trocando-tema *::after {
+  transition: none !important;
+}
+
+/* ── Folha: superficie de conteudo ──
+   Branca, raio 24 e so sombra. Post, painel, perfil, lista: tudo que e
+   conteudo mora numa folha; o vidro fica com a navegacao. */
+.folha {
+  background-color: var(--color-surface);
+  border-radius: var(--raio-cartao);
+  box-shadow: var(--sombra-folha);
+}
+
+/* Titulo grande (estilo Apple): sobretitulo em caixa alta, titulo 34/40. */
+.sobretitulo {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.titulo-grande {
+  font-size: 34px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+  color: var(--color-text);
+}
+
+/* ── Logotipo (brand-spec §Tipografia e §Regras 1-3) ──
+   Nunito 900, caixa baixa, tracking -0.035em, corte de cor duro.
+   `.marca-verde` só é aplicado sobre azul ou em tamanho de assinatura. */
+.marca {
+  font-family: 'Nunito', 'Baloo 2', 'Varela Round', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  white-space: nowrap;
+}
+.marca-azul { color: var(--marca-azul); }
+.marca-verde { color: var(--marca-verde); }
+.marca-clara { color: #ffffff; }
+
+/* Assinatura institucional — Nunito 700, caixa alta, tracking 0.30em */
+.assinatura {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.30em;
+  padding-left: 0.30em;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VIDRO — camada de navegação
+   Regra 1: aplicar só na camada funcional (navegação, controles,
+   sobreposições). O conteúdo fica plano, para o vidro ter o que revelar.
+   Regra 2: nunca vidro sobre vidro — o segundo backdrop-filter não tem
+   o que desfocar e ainda cobra uma camada de composição.
+   ═══════════════════════════════════════════════════════════════ */
+/* Material fosco: desfoque + saturação, sem refração. A aresta vem da
+   `--vidro-sombra` (luz em cima, anel de meio pixel, elevação). */
+
+/* Barra e cápsulas: o conteúdo rola por baixo. */
+.vidro {
+  background-color: var(--vidro-fundo-barra);
+  -webkit-backdrop-filter: blur(var(--vidro-desfoque-barra)) saturate(var(--vidro-saturacao));
+  backdrop-filter: blur(var(--vidro-desfoque-barra)) saturate(var(--vidro-saturacao));
+  box-shadow: var(--vidro-sombra);
+}
+
+/* Sobreposições com texto longo (menu, modal, painel lateral). */
+.vidro-denso {
+  background-color: var(--vidro-fundo-denso);
+  -webkit-backdrop-filter: blur(var(--vidro-desfoque-denso)) saturate(var(--vidro-saturacao));
+  backdrop-filter: blur(var(--vidro-desfoque-denso)) saturate(var(--vidro-saturacao));
+}
+
+/* Ilha lateral e porta-crachá: só a grade de pontos passa por baixo. */
+.vidro-painel {
+  background-color: var(--vidro-fundo);
+  -webkit-backdrop-filter: blur(var(--vidro-desfoque)) saturate(160%);
+  backdrop-filter: blur(var(--vidro-desfoque)) saturate(160%);
+  box-shadow: var(--vidro-sombra);
+}
+
+.vidro-flutuante { box-shadow: var(--vidro-sombra), 0 40px 80px -30px rgba(16, 24, 40, .35); }
+
+/* ── Contorno de logotipo de tinta branca ──
+   Parte das marcas do grupo so tem versao de tinta BRANCA, desenhada para
+   fundo escuro. A pastilha do selo e branca: sem tratamento, o logotipo
+   desaparece nela.
+
+   O contorno resolve sem redesenhar nada — a arte enviada continua intacta no
+   arquivo, e o que muda e so como ela e DESENHADA na pastilha. Por isso e
+   `drop-shadow` e nao um PNG novo com a borda embutida: no dia em que a
+   empresa mandar a versao escura, some a marcacao no banco e o logotipo volta
+   ao normal, sem trocar arquivo.
+
+   Sao quatro sombras encadeadas (o filtro seguinte le o resultado do anterior),
+   uma por eixo — juntas fecham o anel em volta da silhueta, inclusive nas
+   diagonais, que as sombras compostas cobrem. Blur zero: aqui o contorno e um
+   traco, nao um halo. Espessura em px, e nao em `em`: a imagem nao tem texto,
+   entao `em` seguiria o tamanho de fonte herdado — um numero sem relacao com a
+   altura em que o logotipo aparece. 1px e o traco que fecha a silhueta na
+   altura do selo (12px) sem engolir o vazado das letras. */
+.logo-contorno {
+  filter:
+    drop-shadow(1px 0 0 var(--contorno-cor))
+    drop-shadow(-1px 0 0 var(--contorno-cor))
+    drop-shadow(0 1px 0 var(--contorno-cor))
+    drop-shadow(0 -1px 0 var(--contorno-cor));
+}
+
+/* Selo de empresa sem pastilha (crachá, perfil) no escuro: o logotipo vira
+   tinta branca. Pastilha aqui nao cabe — o selo divide a coluna com o chip
+   do papel, e qualquer caixa em volta dele empurra o logotipo e aperta o
+   chip. Monocromatico serve aos dois tipos de arte: a tinta escura (Neway)
+   clareia e a branca (Split Risk) fica como foi desenhada, sem o contorno,
+   que so existe para o fundo claro. */
+.dark .selo-solto img {
+  filter: brightness(0) invert(1);
+}
+
+/* Anel pontilhado do aviso — `outline`, e nao `border`, por dois motivos:
+   acompanha o border-radius e e desenhado FORA da caixa. Assim o cartao mantem
+   a mesma hairline estrutural de todas as superficies do app e o anel fica
+   sendo uma marcacao em volta dele, nao uma segunda moldura concorrendo com a
+   primeira. A cor entra por `--anel-cor`, que escala com a severidade. */
+.anel-pontilhado {
+  outline: 2px dotted var(--anel-cor, var(--color-border));
+  outline-offset: 4px;
+}
+
+
+/* Superficie clicavel: em repouso e a borda que define; a elevacao aparece
+   como resposta ao ponteiro, entao borda e sombra nunca desenham a mesma
+   aresta ao mesmo tempo. */
+.elevar {
+  transition: transform var(--motion-rapido) ease, box-shadow var(--motion-rapido) ease;
+}
+.elevar:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .elevar:hover { transform: none; }
+}
+
+/* ── Sem suporte a backdrop-filter: cai para opaco ──
+   Vidro translúcido sem desfoque é só texto sobre conteúdo — ilegível. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidro,
+  .vidro-denso,
+  .vidro-painel {
+    background-color: var(--color-nav);
+  }
+}
+
+/* ── Ajustes de acessibilidade do sistema ──
+   Espelham Reduce Transparency, Increase Contrast e Reduce Motion. */
+@media (prefers-reduced-transparency: reduce) {
+  .vidro,
+  .vidro-denso,
+  .vidro-painel {
+    background-color: var(--color-nav);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .vidro,
+  .vidro-denso,
+  .vidro-painel {
+    background-color: var(--color-nav);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .vidro-painel,
+  .vidro-flutuante {
+    box-shadow: none;
+  }
+}
+
+/* Foco visível — a cor principal (o verde sinal não alcança 3:1 sobre branco) */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Campos de busca (Buscar e Pessoas): sem o anel azul ao clicar. O navegador
+   trata todo campo de texto como foco de teclado, entao o anel aparecia no
+   clique do mouse e pesava sobre um campo largo. Quem navega por teclado
+   continua enxergando o foco: a borda do proprio campo escurece. */
+.sem-anel-foco:focus-visible {
+  outline: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background-color: var(--color-bg); }
+::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-secondary); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Entrada do painel de rota ──
+   Feita em CSS, nao pela Motion, de proposito: `transform` e `filter` criam
+   bloco de contencao, e a Motion reescreve os valores que gerencia a cada
+   re-render — limpar o style a mao so dura ate o render seguinte, e entao todo
+   `position: fixed` dentro do painel (modal, veu) volta a se posicionar pelo
+   painel em vez da viewport. Animacao CSS sem fill-mode nao deixa nada para
+   tras: terminou, as propriedades voltam ao valor proprio do elemento. */
+@keyframes painelEntra {
+  from { opacity: 0; transform: translateX(var(--painel-de, 0)); filter: blur(7px); }
+  to   { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+.painel-entra { animation: painelEntra 0.34s cubic-bezier(0.22, 0.61, 0.36, 1); }
+
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+.animate-scaleIn { animation: scaleIn 0.2s ease-out; }
+
+/* Entrada vinda de baixo — o cartão de login e os blocos que sobem ao
+   aparecer. Não vem do GGPost: lá essa entrada é feita pelo painel
+   lateral, que desliza na horizontal. */
+@keyframes subirEntrada {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: subirEntrada 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+/* Entrada curta, de cima para baixo: o campo que se revela ao marcar uma
+   opção no formulário. */
+@keyframes descerEntrada {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down { animation: descerEntrada 0.2s ease-out both; }
+
+/* Reduce Motion — precisa vir DEPOIS das definicoes acima: mesma
+   especificidade, quem vem por ultimo vence. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn,
+  .animate-scaleIn,
+  .animate-slide-up,
+  .animate-slide-down,
+  .painel-entra {
+    animation: none;
+  }
+  .transition-all,
+  .transition-colors,
+  .transition-opacity {
+    transition-duration: 1ms;
+  }
+}
+
+/* ── Recharts: Eixos — garantir que ticks e axis labels apareçam ── */
+/* TW4 Preflight reseta `border: 0 solid` em `*` e `display: block` em `svg`.
+   Isso pode quebrar elementos SVG internos do Recharts. Override necessário: */
+.recharts-wrapper text,
+.recharts-wrapper tspan {
+  fill: var(--color-tick);
+  font-size: 12px;
+  border: initial;
+}
+.recharts-xAxis,
+.recharts-yAxis,
+.recharts-cartesian-axis {
+  visibility: visible !important;
+  display: initial !important;
+}
+.recharts-cartesian-axis-tick {
+  visibility: visible !important;
+}
+.recharts-cartesian-axis-tick text,
+.recharts-cartesian-axis-tick-value {
+  fill: var(--color-tick) !important;
+  font-size: 12px;
+  visibility: visible !important;
+}
+.recharts-cartesian-axis-line {
+  stroke: var(--color-border) !important;
+}
+
+/* ── Recharts: NUNCA borda/outline preta em nenhum chart ── */
+/* SVG container — matar focus ring do accessibilityLayer */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-wrapper svg:focus,
+.recharts-wrapper svg:focus-visible,
+.recharts-wrapper svg:active,
+.recharts-surface,
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none !important;
+  border: none !important;
+}
+/* Barras — nunca stroke/outline */
+.recharts-bar-rectangle path,
+.recharts-bar-rectangle rect,
+.recharts-active-bar path,
+.recharts-active-bar rect,
+.recharts-rectangle {
+  stroke: none !important;
+  outline: none !important;
+}
+.recharts-bar-rectangle,
+.recharts-bar-rectangle:focus,
+.recharts-bar-rectangle:active,
+.recharts-bar-rectangle:focus-visible,
+.recharts-active-bar,
+.recharts-active-bar:focus,
+.recharts-active-bar:active,
+.recharts-active-bar:focus-visible {
+  outline: none !important;
+}
+/* Pie — sem stroke, sem outline */
+.recharts-pie-sector,
+.recharts-pie-sector:focus,
+.recharts-pie-sector:active,
+.recharts-pie-sector:focus-visible,
+.recharts-pie-sector g {
+  outline: none !important;
+  stroke: none !important;
+}
+.recharts-pie-sector path {
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+/* ── Utilitários do produto ── */
+.linha-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.linha-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Três pontos do P do logotipo: "digitando" só em momentos — na abertura do
+   app e enquanto a lente da lateral viaja. Parado, o logotipo fica parado: um
+   movimento eterno no canto da tela puxa o olho o dia inteiro.
+   transform-box: fill-box faz cada ponto subir a partir do próprio centro. */
+@keyframes logoDigitando {
+  0%, 55%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-5px); }
+}
+.logo-ponto {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.digitando .logo-ponto { animation: logoDigitando .9s ease-in-out infinite; }
+.digitando .logo-ponto:nth-of-type(2) { animation-delay: .12s; }
+.digitando .logo-ponto:nth-of-type(3) { animation-delay: .24s; }
+
+/* Três pontos pulando (o mesmo gesto do logotipo): "alguém está digitando",
+   "carregando", "salvando". */
+@keyframes pontoPula {
+  0%, 55%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-4px); }
+}
+.pontos-pulando { display: inline-flex; align-items: center; gap: 4px; }
+.pontos-pulando > i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background-color: currentColor;
+  animation: pontoPula .9s ease-in-out infinite;
+}
+.pontos-pulando > i:nth-child(2) { animation-delay: .12s; }
+.pontos-pulando > i:nth-child(3) { animation-delay: .24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .digitando .logo-ponto,
+  .pontos-pulando > i { animation: none !important; }
+}
+
+/* Skeleton de carregamento */
+@keyframes brilhoSkeleton {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.5; }
+}
+.skeleton {
+  background-color: var(--color-border);
+  border-radius: 0.5rem;
+  animation: brilhoSkeleton 1.4s ease-in-out infinite;
+}
+

@@ -353,10 +353,10 @@ export function Salas() {
     <div ref={containerRef} className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Status das Salas</h1>
-          <p className="text-slate-400">Disponibilidade em tempo real para hoje.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight">Status das Salas</h1>
+          <p className="text-[var(--color-text-secondary)]">Disponibilidade em tempo real para hoje.</p>
         </div>
-        <Button onClick={() => openNewModal()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20">
+        <Button onClick={() => openNewModal()} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white shadow-lg">
           <Plus className="w-4 h-4 mr-2" />
           Novo Agendamento
         </Button>
@@ -364,7 +364,7 @@ export function Salas() {
 
       {loading ? (
         <div className="flex justify-center p-12">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -375,10 +375,10 @@ export function Salas() {
             const isOccupied = !!currentBooking
 
             return (
-              <Card key={room.id} className={`room-card bg-slate-900 border ${isOccupied ? 'border-rose-500/50' : 'border-slate-800'} transition-colors relative overflow-hidden`}>
+              <Card key={room.id} className={`room-card bg-[var(--color-surface)] border ${isOccupied ? 'border-rose-500/50' : 'border-[var(--color-border)]'} transition-colors relative overflow-hidden`}>
                 <CardHeader className="pb-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg text-white font-semibold">{room.name}</CardTitle>
-                  <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isOccupied ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                  <CardTitle className="text-lg text-[var(--color-text)] font-semibold">{room.name}</CardTitle>
+                  <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isOccupied ? 'bg-[var(--color-danger-bg)] text-[var(--color-danger)]' : 'bg-[var(--color-sucesso)]/10 text-[var(--color-sucesso)]'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-rose-400' : 'bg-emerald-400'}`}></span>
                     {isOccupied ? 'Ocupada' : 'Disponível'}
                   </span>
@@ -387,33 +387,33 @@ export function Salas() {
                   <div className={`p-4 rounded-lg flex flex-col items-center justify-center text-center min-h-[100px] border ${isOccupied ? 'bg-rose-500/5 border-rose-500/10' : 'bg-emerald-500/5 border-emerald-500/10'}`}>
                     {isOccupied ? (
                       <>
-                        <h4 className="text-rose-300 font-medium truncate w-full px-2" title={currentBooking.title}>{currentBooking.title}</h4>
+                        <h4 className="text-[var(--color-danger)] font-medium truncate w-full px-2" title={currentBooking.title}>{currentBooking.title}</h4>
                         {getFirstParticipantName(currentBooking) && (
-                          <div className="flex items-center text-slate-400 text-xs mt-2">
+                          <div className="flex items-center text-[var(--color-text-secondary)] text-xs mt-2">
                             <User className="w-3 h-3 mr-1" />
                             {getFirstParticipantName(currentBooking)}
                           </div>
                         )}
-                        <div className="flex items-center text-rose-400/80 text-xs mt-1">
+                        <div className="flex items-center text-[var(--color-danger)]/80 text-xs mt-1">
                           <Clock className="w-3 h-3 mr-1" />
                           Até {currentBooking.end_time.substring(0, 5)}
                         </div>
                       </>
                     ) : (
-                      <span className="text-emerald-400/90 font-medium">Livre para uso agora</span>
+                      <span className="text-[var(--color-sucesso)]/90 font-medium">Livre para uso agora</span>
                     )}
                   </div>
 
-                  <div className="text-center text-slate-500 text-xs flex items-center justify-center gap-1.5 py-1">
+                  <div className="text-center text-[var(--color-text-muted)] text-xs flex items-center justify-center gap-1.5 py-1">
                     <Clock className="w-3.5 h-3.5" />
                     {nextBooking ? `Próxima reserva às ${nextBooking.start_time.substring(0, 5)}` : 'Nenhuma próxima reserva hoje'}
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                    <Button onClick={() => openNewModal(room.id)} className="w-full bg-blue-600 hover:bg-blue-700">
+                  <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+                    <Button onClick={() => openNewModal(room.id)} className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)]">
                       Agendar Sala
                     </Button>
-                    <Button onClick={() => openAgenda(room)} variant="ghost" className="w-full text-slate-400 hover:text-white hover:bg-slate-800">
+                    <Button onClick={() => openAgenda(room)} variant="ghost" className="w-full text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-preenchimento-2)]">
                       Ver todas reuniões
                     </Button>
                   </div>
@@ -426,20 +426,20 @@ export function Salas() {
 
       {/* Modal de Agenda (Ver todas as reuniões) */}
       {isAgendaOpen && agendaRoom && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 shadow-2xl max-h-[90vh] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
+          <Card className="w-full max-w-2xl bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl max-h-[90vh] flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
               <div>
-                <CardTitle className="text-xl text-white">Agenda: {agendaRoom.name}</CardTitle>
-                <p className="text-slate-400 text-sm mt-1">Todos os agendamentos realizados para esta sala</p>
+                <CardTitle className="text-xl text-[var(--color-text)]">Agenda: {agendaRoom.name}</CardTitle>
+                <p className="text-[var(--color-text-secondary)] text-sm mt-1">Todos os agendamentos realizados para esta sala</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsAgendaOpen(false)} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={() => setIsAgendaOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                 <X className="w-5 h-5" />
               </Button>
             </CardHeader>
             <div className="p-6 flex flex-col flex-1 overflow-hidden">
               <div className="mb-6">
-                <Label className="text-slate-400 text-xs uppercase tracking-wider mb-2 block font-semibold">Filtrar por data</Label>
+                <Label className="text-[var(--color-text-secondary)] text-xs uppercase tracking-wider mb-2 block font-semibold">Filtrar por data</Label>
                 <div className="relative max-w-xs">
                   <Input 
                     type="date" 
@@ -448,46 +448,46 @@ export function Salas() {
                     onClick={(e) => {
                       try { e.currentTarget.showPicker() } catch (err) {}
                     }}
-                    className="bg-slate-950 border-slate-700 text-white cursor-pointer pl-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)] cursor-pointer pl-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
-                  <CalendarIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                  <CalendarIcon className="w-4 h-4 text-[var(--color-text-secondary)] absolute left-3 top-3 pointer-events-none" />
                 </div>
               </div>
 
               <div className="overflow-y-auto pr-2 space-y-6 flex-1">
                 {loadingAgenda ? (
-                  <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+                  <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-primary)]" /></div>
                 ) : (
                   <>
                     <div>
-                      <Label className="text-slate-400 text-xs uppercase tracking-wider mb-3 block font-semibold">Próximas Reuniões</Label>
+                      <Label className="text-[var(--color-text-secondary)] text-xs uppercase tracking-wider mb-3 block font-semibold">Próximas Reuniões</Label>
                       {upcomingBookings.length === 0 ? (
-                        <div className="text-center p-4 bg-slate-950 rounded-lg border border-slate-800/50 text-slate-500 text-sm">
+                        <div className="text-center p-4 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] text-sm">
                           Nenhuma próxima reunião encontrada.
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {upcomingBookings.map(booking => (
-                            <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 group hover:border-blue-500/30 transition-colors">
+                            <div key={booking.id} className="flex items-center justify-between p-4 bg-[var(--color-bg)] rounded-xl border border-[var(--color-border)] group hover:border-[var(--color-primary)]/30 transition-colors">
                               <div>
-                                <h4 className="text-white font-medium mb-1">{booking.title}</h4>
-                                <div className="flex items-center gap-3 text-slate-400 text-sm">
+                                <h4 className="text-[var(--color-text)] font-medium mb-1">{booking.title}</h4>
+                                <div className="flex items-center gap-3 text-[var(--color-text-secondary)] text-sm">
                                   <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {booking.booking_date.split('-').reverse().join('/')}</span>
                                   <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
                                 {getFirstParticipantName(booking) && (
-                                  <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-800 rounded-full text-sm text-slate-300">
+                                  <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[var(--color-preenchimento-2)] rounded-full text-sm text-[var(--color-text-secondary)]">
                                     <User className="w-3.5 h-3.5" />
                                     {getFirstParticipantName(booking)}
                                   </span>
                                 )}
-                                <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
-                                  <Button variant="ghost" size="icon" onClick={() => openEditModal(booking)} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10">
+                                <div className="flex items-center gap-1 border-l border-[var(--color-border)] pl-3">
+                                  <Button variant="ghost" size="icon" onClick={() => openEditModal(booking)} className="h-8 w-8 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:bg-[var(--color-primary-bg)]">
                                     <Edit2 className="w-4 h-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteBooking(booking.id)} className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10">
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteBooking(booking.id)} className="h-8 w-8 text-[var(--color-danger)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]">
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
                                 </div>
@@ -499,31 +499,31 @@ export function Salas() {
                     </div>
 
                     <div>
-                      <Label className="text-slate-400 text-xs uppercase tracking-wider mb-3 block font-semibold">Histórico (Encerradas)</Label>
+                      <Label className="text-[var(--color-text-secondary)] text-xs uppercase tracking-wider mb-3 block font-semibold">Histórico (Encerradas)</Label>
                       {pastBookings.length === 0 ? (
-                        <div className="text-center p-4 bg-slate-950 rounded-lg border border-slate-800/50 text-slate-500 text-sm">
+                        <div className="text-center p-4 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] text-sm">
                           Nenhum histórico encontrado.
                         </div>
                       ) : (
                         <div className="space-y-3 opacity-60">
                           {pastBookings.map(booking => (
-                            <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                            <div key={booking.id} className="flex items-center justify-between p-4 bg-[var(--color-bg)] rounded-xl border border-[var(--color-border)]">
                               <div>
-                                <h4 className="text-slate-300 font-medium mb-1">{booking.title}</h4>
-                                <div className="flex items-center gap-3 text-slate-500 text-sm">
+                                <h4 className="text-[var(--color-text-secondary)] font-medium mb-1">{booking.title}</h4>
+                                <div className="flex items-center gap-3 text-[var(--color-text-muted)] text-sm">
                                   <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {booking.booking_date.split('-').reverse().join('/')}</span>
                                   <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
                                 {getFirstParticipantName(booking) && (
-                                  <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-900 rounded-full text-sm text-slate-400">
+                                  <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[var(--color-surface)] rounded-full text-sm text-[var(--color-text-secondary)]">
                                     <User className="w-3.5 h-3.5" />
                                     {getFirstParticipantName(booking)}
                                   </span>
                                 )}
-                                <div className="flex items-center gap-1 border-l border-slate-800 pl-3">
-                                  <Button variant="ghost" size="icon" onClick={() => openEditModal(booking)} className="h-8 w-8 text-slate-500 hover:text-white">
+                                <div className="flex items-center gap-1 border-l border-[var(--color-border)] pl-3">
+                                  <Button variant="ghost" size="icon" onClick={() => openEditModal(booking)} className="h-8 w-8 text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                                     <Edit2 className="w-4 h-4" />
                                   </Button>
                                 </div>
@@ -537,8 +537,8 @@ export function Salas() {
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-              <Button onClick={() => setIsAgendaOpen(false)} className="w-full bg-slate-800 hover:bg-slate-700 text-white">
+            <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-preenchimento)]">
+              <Button onClick={() => setIsAgendaOpen(false)} className="w-full bg-[var(--color-preenchimento-2)] hover:bg-[var(--color-preenchimento-3)] text-[var(--color-text)]">
                 Fechar Agenda
               </Button>
             </div>
@@ -548,44 +548,44 @@ export function Salas() {
 
       {/* Modal de Agendamento */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="w-full max-w-lg bg-slate-900 border-slate-700 shadow-2xl max-h-[90vh] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-              <CardTitle className="text-xl text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
+          <Card className="w-full max-w-lg bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl max-h-[90vh] flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
+              <CardTitle className="text-xl text-[var(--color-text)]">
                 {editingBookingId ? 'Editar Agendamento' : 'Novo Agendamento'}
               </CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                 <X className="w-5 h-5" />
               </Button>
             </CardHeader>
             <form onSubmit={handleSaveBooking} className="overflow-y-auto p-6 space-y-4">
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm">
+                <div className="p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md text-[var(--color-danger)] text-sm">
                   {error}
                 </div>
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-slate-300">Título da Reunião *</Label>
-                <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="title" className="text-[var(--color-text-secondary)]">Título da Reunião *</Label>
+                <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="room" className="text-slate-300">Sala *</Label>
+                  <Label htmlFor="room" className="text-[var(--color-text-secondary)]">Sala *</Label>
                   <select 
                     id="room" 
                     value={roomId} 
                     onChange={e => setRoomId(e.target.value)} 
                     required 
-                    className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   >
                     <option value="">Selecione...</option>
                     {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="date" className="text-slate-300">Data *</Label>
+                  <Label htmlFor="date" className="text-[var(--color-text-secondary)]">Data *</Label>
                   <Input 
                     id="date" 
                     type="date" 
@@ -595,14 +595,14 @@ export function Salas() {
                     onClick={(e) => {
                       try { e.currentTarget.showPicker() } catch (err) {}
                     }}
-                    className="bg-slate-950 border-slate-700 text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
+                    className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)] cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime" className="text-slate-300">Início *</Label>
+                  <Label htmlFor="startTime" className="text-[var(--color-text-secondary)]">Início *</Label>
                   <Input 
                     id="startTime" 
                     type="time" 
@@ -610,11 +610,11 @@ export function Salas() {
                     onChange={e => setStartTime(e.target.value)} 
                     required 
                     onClick={(e) => { try { e.currentTarget.showPicker() } catch (err) {} }}
-                    className="bg-slate-950 border-slate-700 text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
+                    className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)] cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="duration" className="text-slate-300">Duração *</Label>
+                  <Label htmlFor="duration" className="text-[var(--color-text-secondary)]">Duração *</Label>
                   <select
                     id="duration"
                     value={isCustomDuration ? 'custom' : duration}
@@ -631,7 +631,7 @@ export function Salas() {
                         setDuration(e.target.value)
                       }
                     }}
-                    className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   >
                     <option value="30">30 min</option>
                     <option value="60">1 hora</option>
@@ -645,11 +645,11 @@ export function Salas() {
               </div>
 
               {isCustomDuration && (
-                <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-                  <Label className="text-slate-300">Duração personalizada *</Label>
+                <div className="space-y-2 p-3 rounded-lg bg-[var(--color-preenchimento)] border border-[var(--color-border)]">
+                  <Label className="text-[var(--color-text-secondary)]">Duração personalizada *</Label>
                   <div className="flex items-end gap-3">
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor="customHours" className="text-xs text-slate-400">Horas</Label>
+                      <Label htmlFor="customHours" className="text-xs text-[var(--color-text-secondary)]">Horas</Label>
                       <Input
                         id="customHours"
                         type="number"
@@ -662,11 +662,11 @@ export function Salas() {
                           const m = parseInt(customMinutes) || 0
                           setDuration((h * 60 + m).toString())
                         }}
-                        className="bg-slate-950 border-slate-700 text-white"
+                        className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]"
                       />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor="customMinutes" className="text-xs text-slate-400">Minutos</Label>
+                      <Label htmlFor="customMinutes" className="text-xs text-[var(--color-text-secondary)]">Minutos</Label>
                       <Input
                         id="customMinutes"
                         type="number"
@@ -680,11 +680,11 @@ export function Salas() {
                           const m = parseInt(e.target.value) || 0
                           setDuration((h * 60 + m).toString())
                         }}
-                        className="bg-slate-950 border-slate-700 text-white"
+                        className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[var(--color-text-secondary)]">
                     {(() => {
                       const total = parseInt(duration) || 0
                       if (total <= 0) return 'Informe uma duração maior que zero.'
@@ -697,12 +697,12 @@ export function Salas() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="service" className="text-slate-300">Serviço de Copa</Label>
+                <Label htmlFor="service" className="text-[var(--color-text-secondary)]">Serviço de Copa</Label>
                 <select 
                   id="service" 
                   value={service} 
                   onChange={e => setService(e.target.value)} 
-                  className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 >
                   <option value="sem_cafe">Sem Café</option>
                   <option value="com_cafe">Com Café</option>
@@ -710,8 +710,8 @@ export function Salas() {
               </div>
 
               <div className="space-y-2 pt-2">
-                <Label className="text-slate-300 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-slate-400" />
+                <Label className="text-[var(--color-text-secondary)] flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[var(--color-text-secondary)]" />
                   Participantes (Notificações)
                 </Label>
                 
@@ -721,9 +721,9 @@ export function Salas() {
                       const c = collaborators.find(col => col.id === id)
                       if (!c) return null
                       return (
-                        <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600/20 text-blue-400 rounded-md text-xs border border-blue-600/30">
+                        <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--color-primary-bg)] text-[var(--color-primary)] rounded-md text-xs border border-[var(--color-primary)]/30">
                           {c.name}
-                          <button type="button" onClick={() => toggleCollaborator(c.id)} className="hover:text-blue-200 focus:outline-none">
+                          <button type="button" onClick={() => toggleCollaborator(c.id)} className="hover:text-[var(--color-primary-hover)] focus:outline-none">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
@@ -742,15 +742,15 @@ export function Salas() {
                     }}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                    className="bg-slate-950 border-slate-700 text-white" 
+                    className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" 
                   />
                   
                   {showDropdown && filteredCollaborators.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-slate-800 border border-slate-700 rounded-md shadow-xl z-50">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[var(--color-preenchimento-2)] border border-[var(--color-border)] rounded-md shadow-xl z-50">
                       {filteredCollaborators.map(c => (
                         <div 
                           key={c.id} 
-                          className="p-2 text-sm text-slate-300 hover:bg-blue-600 hover:text-white cursor-pointer transition-colors"
+                          className="p-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-primary)] hover:text-white cursor-pointer transition-colors"
                           onMouseDown={(e) => {
                             e.preventDefault()
                             toggleCollaborator(c.id)
@@ -764,18 +764,18 @@ export function Salas() {
                     </div>
                   )}
                   {showDropdown && participantSearch && filteredCollaborators.length === 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-xl z-50 p-3 text-sm text-slate-400 text-center">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-preenchimento-2)] border border-[var(--color-border)] rounded-md shadow-xl z-50 p-3 text-sm text-[var(--color-text-secondary)] text-center">
                       Nenhum colaborador encontrado.
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={formLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={formLoading} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white">
                   {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar Salvar'}
                 </Button>
               </div>

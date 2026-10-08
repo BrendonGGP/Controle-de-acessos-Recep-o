@@ -160,17 +160,17 @@ export function Admin() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Settings className="w-6 h-6 text-blue-400" />
+        <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight flex items-center gap-2">
+          <Settings className="w-6 h-6 text-[var(--color-primary)]" />
           Painel Administrativo
         </h1>
-        <p className="text-slate-400 mt-1">Gerencie as configurações globais do sistema.</p>
+        <p className="text-[var(--color-text-secondary)] mt-1">Gerencie as configurações globais do sistema.</p>
       </div>
 
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
+      <div className="flex gap-2 border-b border-[var(--color-border)] pb-2">
         <Button 
           variant={activeTab === 'rooms' ? 'default' : 'ghost'} 
-          className={activeTab === 'rooms' ? 'bg-blue-600 text-white' : 'text-slate-400'}
+          className={activeTab === 'rooms' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-secondary)]'}
           onClick={() => setActiveTab('rooms')}
         >
           <Building className="w-4 h-4 mr-2" />
@@ -178,7 +178,7 @@ export function Admin() {
         </Button>
         <Button 
           variant={activeTab === 'users' ? 'default' : 'ghost'} 
-          className={activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-400'}
+          className={activeTab === 'users' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-secondary)]'}
           onClick={() => setActiveTab('users')}
         >
           <UsersIcon className="w-4 h-4 mr-2" />
@@ -187,39 +187,39 @@ export function Admin() {
       </div>
 
       {activeTab === 'rooms' && (
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
           <CardHeader>
-            <CardTitle className="text-lg text-white">Gerenciamento de Salas</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-lg text-[var(--color-text)]">Gerenciamento de Salas</CardTitle>
+            <CardDescription className="text-[var(--color-text-secondary)]">
               Adicione ou remova salas de reunião. Elas aparecerão no dropdown de agendamento.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {fetchError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm font-mono">
+              <div className="p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md text-[var(--color-danger)] text-sm font-mono">
                 Erro do Banco: {fetchError}
               </div>
             )}
             <form onSubmit={handleAddRoom} className="flex items-end gap-4">
               <div className="flex-1 space-y-2">
-                <Label htmlFor="roomName" className="text-slate-300">Nova Sala</Label>
+                <Label htmlFor="roomName" className="text-[var(--color-text-secondary)]">Nova Sala</Label>
                 <Input 
                   id="roomName" 
                   value={newRoomName} 
                   onChange={e => setNewRoomName(e.target.value)}
                   placeholder="Ex: Sala de Inovação" 
-                  className="bg-slate-950 border-slate-700 text-white" 
+                  className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" 
                 />
               </div>
-              <Button type="submit" disabled={loading || !newRoomName} className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" disabled={loading || !newRoomName} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)]">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar
               </Button>
             </form>
 
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-950 text-slate-400">
+                <thead className="bg-[var(--color-bg)] text-[var(--color-text-secondary)]">
                   <tr>
                     <th className="px-4 py-3">Nome da Sala</th>
                     <th className="px-4 py-3 text-right">Ações</th>
@@ -227,15 +227,15 @@ export function Admin() {
                 </thead>
                 <tbody>
                   {loading && rooms.length === 0 ? (
-                    <tr><td colSpan={2} className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-blue-500" /></td></tr>
+                    <tr><td colSpan={2} className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-[var(--color-primary)]" /></td></tr>
                   ) : rooms.length === 0 ? (
-                    <tr><td colSpan={2} className="p-4 text-center text-slate-500">Nenhuma sala cadastrada.</td></tr>
+                    <tr><td colSpan={2} className="p-4 text-center text-[var(--color-text-muted)]">Nenhuma sala cadastrada.</td></tr>
                   ) : (
                     rooms.map(room => (
-                      <tr key={room.id} className="border-t border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-4 py-3 text-white font-medium">{room.name}</td>
+                      <tr key={room.id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-nav-hover)]">
+                        <td className="px-4 py-3 text-[var(--color-text)] font-medium">{room.name}</td>
                         <td className="px-4 py-3 text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteRoom(room.id)} className="text-red-400 hover:text-red-300 hover:bg-red-400/10">
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteRoom(room.id)} className="text-[var(--color-danger)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </td>
@@ -250,23 +250,23 @@ export function Admin() {
       )}
 
       {activeTab === 'users' && (
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-lg text-white">Contas de Acesso</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-lg text-[var(--color-text)]">Contas de Acesso</CardTitle>
+              <CardDescription className="text-[var(--color-text-secondary)]">
                 Gerencie quem pode logar no sistema.
               </CardDescription>
             </div>
-            <Button onClick={openNewUserModal} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={openNewUserModal} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)]">
               <Plus className="w-4 h-4 mr-2" />
               Novo Usuário
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-950 text-slate-400">
+                <thead className="bg-[var(--color-bg)] text-[var(--color-text-secondary)]">
                   <tr>
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">E-mail</th>
@@ -276,25 +276,25 @@ export function Admin() {
                 </thead>
                 <tbody>
                   {loadingUsers && users.length === 0 ? (
-                    <tr><td colSpan={4} className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-blue-500" /></td></tr>
+                    <tr><td colSpan={4} className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-[var(--color-primary)]" /></td></tr>
                   ) : users.length === 0 ? (
-                    <tr><td colSpan={4} className="p-4 text-center text-slate-500">Nenhum usuário cadastrado.</td></tr>
+                    <tr><td colSpan={4} className="p-4 text-center text-[var(--color-text-muted)]">Nenhum usuário cadastrado.</td></tr>
                   ) : (
                     users.map(user => (
-                      <tr key={user.id} className="border-t border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-4 py-3 text-white font-medium">{user.name}</td>
-                        <td className="px-4 py-3 text-slate-300">{user.email}</td>
+                      <tr key={user.id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-nav-hover)]">
+                        <td className="px-4 py-3 text-[var(--color-text)] font-medium">{user.name}</td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">{user.email}</td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${user.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-slate-800 text-slate-300'}`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${user.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-[var(--color-preenchimento-2)] text-[var(--color-text-secondary)]'}`}>
                             {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <User className="w-3 h-3 mr-1" />}
                             {user.role.toUpperCase()}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right space-x-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEditUserModal(user)} className="text-slate-400 hover:text-white">
+                          <Button variant="ghost" size="icon" onClick={() => openEditUserModal(user)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                             <Edit2 className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-red-400 hover:text-red-300 hover:bg-red-400/10">
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-[var(--color-danger)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </td>
@@ -310,47 +310,47 @@ export function Admin() {
 
       {/* Modal de Novo/Editar Usuário */}
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <Card className="w-full max-w-md bg-slate-900 border-slate-700 shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-              <CardTitle className="text-xl text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm">
+          <Card className="w-full max-w-md bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
+              <CardTitle className="text-xl text-[var(--color-text)]">
                 {editingUserId ? 'Editar Usuário' : 'Criar Nova Conta'}
               </CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setIsUserModalOpen(false)} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={() => setIsUserModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                 <X className="w-5 h-5" />
               </Button>
             </CardHeader>
             <form onSubmit={handleSaveUser} className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="u_name" className="text-slate-300">Nome Completo</Label>
-                <Input id="u_name" value={newUserName} onChange={e => setNewUserName(formatName(e.target.value))} required className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="u_name" className="text-[var(--color-text-secondary)]">Nome Completo</Label>
+                <Input id="u_name" value={newUserName} onChange={e => setNewUserName(formatName(e.target.value))} required className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="u_email" className="text-slate-300">E-mail (Login)</Label>
-                <Input id="u_email" type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="u_email" className="text-[var(--color-text-secondary)]">E-mail (Login)</Label>
+                <Input id="u_email" type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="u_pwd" className="text-slate-300">{editingUserId ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha Provisória (Mínimo 6 caracteres)'}</Label>
-                <Input id="u_pwd" type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required={!editingUserId} minLength={6} className="bg-slate-950 border-slate-700 text-white" />
+                <Label htmlFor="u_pwd" className="text-[var(--color-text-secondary)]">{editingUserId ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha Provisória (Mínimo 6 caracteres)'}</Label>
+                <Input id="u_pwd" type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required={!editingUserId} minLength={6} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="u_role" className="text-slate-300">Nível de Acesso</Label>
+                <Label htmlFor="u_role" className="text-[var(--color-text-secondary)]">Nível de Acesso</Label>
                 <select 
                   id="u_role" 
                   value={newUserRole} 
                   onChange={e => setNewUserRole(e.target.value)} 
-                  className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 >
                   <option value="recepcao">Recepção (Padrão)</option>
                   <option value="admin">Administrador (Acesso Total)</option>
                 </select>
               </div>
               
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsUserModalOpen(false)} className="text-slate-400 hover:text-white">
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => setIsUserModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={loadingUsers} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={loadingUsers} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white">
                   {loadingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}
                 </Button>
               </div>
