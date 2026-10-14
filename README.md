@@ -13,7 +13,7 @@ Um sistema completo de gerenciamento de portaria, controle de acessos e agendame
 - 🛡️ **Controle de Acesso (Check-in/Check-out):** Registro de visitantes, prestadores de serviço e candidatos. O sistema notifica automaticamente o colaborador anfitrião assim que a entrada é registrada.
 - 👥 **Gestão de Colaboradores e Usuários:** Cadastro completo de colaboradores (com cargos e departamentos) e sistema de permissões (Administradores vs Recepcionistas).
 - 💬 **Integração com WhatsApp:** Notificações instantâneas enviadas via Z-API para avisar os colaboradores sobre suas reuniões e sobre a chegada de suas visitas.
-- 🎨 **Identidade Visual Corporativa:** Design responsivo, elegante e no padrão visual Dark Mode oficial do Grupo Gomes Pires.
+- 🎨 **Identidade da suite GGPost:** Mesmo sistema visual do GGPost ("Vidro"), com tema claro e escuro. Ver [`frontend/DESIGN.md`](./frontend/DESIGN.md).
 
 ## 📚 Documentação Técnica e Manuais
 
@@ -28,9 +28,9 @@ A documentação detalhada do sistema está na pasta `/docs`. Ela é atualizada 
 
 **Frontend:**
 - [React.js](https://reactjs.org/) + [Vite](https://vitejs.dev/)
-- [Tailwind CSS](https://tailwindcss.com/) (Estilização baseada no Manual de Marca)
-- [Lucide React](https://lucide.dev/) (Ícones)
-- [shadcn/ui](https://ui.shadcn.com/) (Componentes Base)
+- [Tailwind CSS](https://tailwindcss.com/) 4, com os tokens da marca GGPost
+- [Hugeicons](https://hugeicons.com/) (Ícones, os mesmos do GGPost)
+- [Motion](https://motion.dev/) e [GSAP](https://gsap.com/) (Movimento)
 - React Router (Navegação)
 
 **Backend / BaaS:**

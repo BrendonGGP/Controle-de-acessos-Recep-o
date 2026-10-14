@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
+import { useTitulo } from '@/hooks/useTitulo'
 import { formatPhone, formatName, normalizePhone } from '@/lib/utils'
+import { dataPorExtenso, hojeLocal } from '@/lib/horario'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShieldCheck, ArrowRightLeft, UserCheck, Loader2, X, Bell } from 'lucide-react'
+import { Select } from '@/components/ui/select'
+import { Segmentado } from '@/components/ui/segmentado'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Modal, RodapeModal } from '@/components/ui/modal'
+import { CabecalhoPagina } from '@/components/CabecalhoPagina'
+import { AvisoErro, EstadoErro, EstadoVazio, Skeleton } from '@/components/Estados'
+import { DoorOpen, LogIn, LogOut, Plus, Whatsapp } from '@/components/icones'
 
 type Collaborator = { id: string; name: string }
 type AccessLog = {
@@ -18,19 +26,43 @@ type AccessLog = {
   created_at: string
 }
 
+const CATEGORIAS = [
+  { value: 'visitas_reunioes', label: 'Visita ou reunião' },
+  { value: 'prestadores_servico', label: 'Prestador de serviço' },
+  { value: 'entregas_mercadoria', label: 'Entrega' },
+  { value: 'entrevista_rh', label: 'Entrevista RH' },
+  { value: 'stands', label: 'Stand' },
+  { value: 'treinamentos_onboarding', label: 'Treinamento' },
+]
+
+const nomeCategoria = (cat: string) =>
+  CATEGORIAS.find(c => c.value === cat)?.label
+  ?? cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+
+/** "hoje, 09:32" ou "13/10, 17:05". */
+function quando(iso: string) {
+  const d = new Date(iso)
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  if (hojeLocal(d) === hojeLocal()) return { dia: 'hoje', hora }
+  return { dia: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), hora }
+}
+
 export function ControleAcesso() {
+  useTitulo('Controle de acesso')
   const { user } = useAuth()
+  const avisar = useToast()
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [logs, setLogs] = useState<AccessLog[]>([])
   const [loading, setLoading] = useState(true)
-  
+  const [erroCarga, setErroCarga] = useState<string | null>(null)
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Form state
-  const [action, setAction] = useState('entrada')
+  const [action, setAction] = useState<'entrada' | 'saida'>('entrada')
   const [category, setCategory] = useState('visitas_reunioes')
   const [visitorName, setVisitorName] = useState('')
   const [document, setDocument] = useState('')
@@ -44,11 +76,12 @@ export function ControleAcesso() {
   }, [])
 
   async function fetchInitialData() {
-    setLoading(true)
+    setErroCarga(null)
     const [collabsRes, logsRes] = await Promise.all([
       supabase.from('collaborators').select('id, name').order('name'),
       supabase.from('access_logs').select('id, action, category, visitor_name, document, created_at').order('created_at', { ascending: false }).limit(20)
     ])
+    if (logsRes.error) setErroCarga(logsRes.error.message)
     if (collabsRes.data) setCollaborators(collabsRes.data)
     if (logsRes.data) setLogs(logsRes.data)
     setLoading(false)
@@ -60,13 +93,13 @@ export function ControleAcesso() {
     setError(null)
 
     if (!visitorName) {
-      setError('Nome do visitante é obrigatório')
+      setError('Informe o nome do visitante.')
       setFormLoading(false)
       return
     }
 
     if (notify && !collaboratorId) {
-      setError('Selecione um colaborador para notificar')
+      setError('Escolha quem recebe o aviso no WhatsApp.')
       setFormLoading(false)
       return
     }
@@ -77,7 +110,7 @@ export function ControleAcesso() {
       if (phone.trim()) {
         cleanPhone = normalizePhone(phone)
         if (!cleanPhone) {
-          throw new Error('Telefone inválido. Informe DDD + número (ex: (11) 98765-4321).')
+          throw new Error('Telefone inválido. Informe DDD e número, como (11) 98765-4321.')
         }
       }
 
@@ -100,15 +133,21 @@ export function ControleAcesso() {
       if (insertError) throw insertError
 
       // Se a notificação estiver ativada, chama a Edge Function diretamente!
+      let avisoFalhou = false
       if (notify && newLog) {
         const { error: invokeError } = await supabase.functions.invoke('notify-access', {
           body: { record: newLog }
         })
         if (invokeError) {
-          alert('Log salvo, mas erro ao notificar WhatsApp: ' + invokeError.message)
+          avisoFalhou = true
+          avisar('error', 'Registro salvo, mas o aviso no WhatsApp não saiu: ' + invokeError.message)
         }
       }
 
+      if (!avisoFalhou) {
+        const registro = action === 'entrada' ? 'Entrada registrada.' : 'Saída registrada.'
+        avisar('success', notify ? `${registro} Aviso enviado no WhatsApp.` : registro)
+      }
       setIsModalOpen(false)
       resetForm()
       fetchInitialData() // refresh logs
@@ -131,189 +170,168 @@ export function ControleAcesso() {
     setError(null)
   }
 
-  const formatCategory = (cat: string) => {
-    return cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-  }
+  const entradasHoje = logs.filter(l => l.action === 'entrada' && hojeLocal(new Date(l.created_at)) === hojeLocal()).length
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight">Controle de Acesso</h1>
-          <p className="text-[var(--color-text-secondary)]">Registre entradas e saídas de visitantes e prestadores.</p>
-        </div>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white shadow-lg">
-          <ArrowRightLeft className="w-4 h-4 mr-2" />
-          Registrar Acesso
-        </Button>
-      </div>
+    <div>
+      <CabecalhoPagina
+        sobretitulo={dataPorExtenso()}
+        titulo="Controle de acesso"
+        descricao="Entradas e saídas de visitantes e prestadores."
+        acoes={
+          <Button onClick={() => { resetForm(); setIsModalOpen(true) }}>
+            <Plus /> Registrar acesso
+          </Button>
+        }
+      />
 
-      <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
-        <CardHeader>
-          <CardTitle className="text-lg text-[var(--color-text)] flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[var(--color-primary)]" />
-            Últimos Registros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {erroCarga && logs.length === 0 && !loading ? (
+        <EstadoErro mensagem={erroCarga} onTentarNovamente={() => { setLoading(true); fetchInitialData() }} />
+      ) : (
+        <section className="folha" aria-labelledby="titulo-registros">
+          <div className="flex items-baseline justify-between gap-4 px-5 pb-2 pt-5">
+            <h2 id="titulo-registros" className="text-[17px] font-semibold leading-[22px] tracking-[-.014em] text-[var(--color-text)]">Últimos registros</h2>
+            {!loading && logs.length > 0 && (
+              <p className="text-[13px] tabular-nums text-[var(--color-text-secondary)]">
+                {entradasHoje === 0 ? 'Nenhuma entrada hoje' : entradasHoje === 1 ? '1 entrada hoje' : `${entradasHoje} entradas hoje`}
+              </p>
+            )}
+          </div>
+
           {loading ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+            <div className="space-y-4 px-5 pb-6 pt-3">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-3 w-14" />
+                  <Skeleton className="h-3 flex-1" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              ))}
             </div>
           ) : logs.length === 0 ? (
-            <p className="text-[var(--color-text-secondary)] text-center p-8">Nenhum registro encontrado.</p>
+            <EstadoVazio
+              icone={<DoorOpen size={22} />}
+              titulo="Nenhum registro ainda"
+              descricao="A primeira entrada que você registrar aparece aqui."
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-[var(--color-text-secondary)] uppercase bg-[var(--color-preenchimento)]">
-                  <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">Data/Hora</th>
-                    <th className="px-4 py-3">Ação</th>
-                    <th className="px-4 py-3">Visitante</th>
-                    <th className="px-4 py-3">Categoria</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Documento</th>
+            <div className="overflow-x-auto px-2 pb-2">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-[12px] text-[var(--color-text-secondary)]">
+                    <th scope="col" className="px-3 py-2.5 font-medium">Quando</th>
+                    <th scope="col" className="px-3 py-2.5 font-medium">Visitante</th>
+                    <th scope="col" className="px-3 py-2.5 font-medium">Movimento</th>
+                    <th scope="col" className="hidden px-3 py-2.5 font-medium md:table-cell">Categoria</th>
+                    <th scope="col" className="hidden px-3 py-2.5 font-medium sm:table-cell">Documento</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-nav-hover)] transition-colors">
-                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                        {new Date(log.created_at).toLocaleString('pt-BR')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          log.action === 'entrada' ? 'bg-[var(--color-sucesso)]/10 text-[var(--color-sucesso)] border border-emerald-500/20' : 'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-rose-500/20'
-                        }`}>
-                          {log.action.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--color-text)] font-medium">{log.visitor_name}</td>
-                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">{formatCategory(log.category)}</td>
-                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">{log.document || '-'}</td>
-                    </tr>
-                  ))}
+                  {logs.map((log) => {
+                    const q = quando(log.created_at)
+                    const entrada = log.action === 'entrada'
+                    return (
+                      <tr key={log.id} className="border-t transition-colors hover:bg-[rgb(var(--tinta)/.03)]" style={{ borderColor: 'var(--color-filete)' }}>
+                        <td className="whitespace-nowrap px-3 py-3 tabular-nums">
+                          <span className="text-[var(--color-text)]">{q.hora}</span>
+                          <span className="ml-1.5 text-[13px] text-[var(--color-text-secondary)]">{q.dia}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="font-medium text-[var(--color-text)]">{log.visitor_name}</p>
+                          <p className="text-[13px] text-[var(--color-text-secondary)] md:hidden">{nomeCategoria(log.category)}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3">
+                          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-nav-text)]">
+                            <span
+                              aria-hidden="true"
+                              className="size-2 rounded-full"
+                              style={{ backgroundColor: entrada ? 'var(--color-online)' : 'var(--color-ausente)' }}
+                            />
+                            {entrada ? 'Entrada' : 'Saída'}
+                          </span>
+                        </td>
+                        <td className="hidden px-3 py-3 text-[var(--color-text-secondary)] md:table-cell">{nomeCategoria(log.category)}</td>
+                        <td className="hidden px-3 py-3 tabular-nums text-[var(--color-text-secondary)] sm:table-cell">{log.document || 'não informado'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Modal Customizado */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(16_24_40/.45)] backdrop-blur-sm animate-fadeIn">
-          <Card className="w-full max-w-lg bg-[var(--color-surface)] border-[var(--color-border)] shadow-2xl max-h-[90vh] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border)] pb-4">
-              <CardTitle className="text-xl text-[var(--color-text)]">Registrar Acesso</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
-                <X className="w-5 h-5" />
-              </Button>
-            </CardHeader>
-            <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4">
-              {error && (
-                <div className="p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 rounded-md text-[var(--color-danger)] text-sm">
-                  {error}
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="action" className="text-[var(--color-text-secondary)]">Ação *</Label>
-                  <select 
-                    id="action" 
-                    value={action} 
-                    onChange={e => setAction(e.target.value)} 
-                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  >
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-[var(--color-text-secondary)]">Categoria *</Label>
-                  <select 
-                    id="category" 
-                    value={category} 
-                    onChange={e => setCategory(e.target.value)} 
-                    className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  >
-                    <option value="visitas_reunioes">Visitas/Reuniões</option>
-                    <option value="prestadores_servico">Prestadores de Serviço</option>
-                    <option value="entregas_mercadoria">Entregas</option>
-                    <option value="entrevista_rh">Entrevista RH</option>
-                    <option value="stands">Stands</option>
-                    <option value="treinamentos_onboarding">Treinamentos</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="visitorName" className="text-[var(--color-text-secondary)]">Nome do Visitante *</Label>
-                <div className="relative">
-                  <UserCheck className="absolute left-3 top-2.5 h-5 w-5 text-[var(--color-text-muted)]" />
-                  <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required className="pl-10 bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" placeholder="Nome completo" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="document" className="text-[var(--color-text-secondary)]">Documento (RG/CPF)</Label>
-                  <Input id="document" type="tel" inputMode="numeric" value={document} onChange={e => setDocument(e.target.value)} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-[var(--color-text-secondary)]">Telefone</Label>
-                  <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="Ex: (11) 99999-9999" className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observations" className="text-[var(--color-text-secondary)]">Observações</Label>
-                <Input id="observations" value={observations} onChange={e => setObservations(e.target.value)} className="bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)]" />
-              </div>
-
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={notify}
-                    onChange={(e) => setNotify(e.target.checked)}
-                    className="rounded border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                  />
-                  <span className="text-[var(--color-text-secondary)] text-sm flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-[#b45309]" />
-                    Enviar aviso via WhatsApp para colaborador
-                  </span>
-                </label>
-
-                {notify && (
-                  <div className="space-y-2 animate-slide-down">
-                    <Label htmlFor="collaborator" className="text-[var(--color-text-secondary)]">Selecione o Colaborador *</Label>
-                    <select 
-                      id="collaborator" 
-                      value={collaboratorId} 
-                      onChange={e => setCollaboratorId(e.target.value)} 
-                      required={notify}
-                      className="flex h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                    >
-                      <option value="">Selecione...</option>
-                      {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={formLoading} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white">
-                  {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Registrar'}
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
+        </section>
       )}
+
+      <Modal aberto={isModalOpen} aoFechar={() => setIsModalOpen(false)} titulo="Registrar acesso">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Segmentado
+            rotulo="Movimento"
+            largo
+            valor={action}
+            aoMudar={setAction}
+            opcoes={[
+              { valor: 'entrada', rotulo: <><LogIn size={16} /> Entrada</> },
+              { valor: 'saida', rotulo: <><LogOut size={16} /> Saída</> },
+            ]}
+          />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="visitorName">Nome do visitante</Label>
+            <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required placeholder="Nome completo" autoComplete="off" />
+          </div>
+
+          <Select label="Categoria" value={category} onChange={setCategory} options={CATEGORIAS} />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="document">Documento (RG ou CPF)</Label>
+              <Input id="document" type="tel" inputMode="numeric" value={document} onChange={e => setDocument(e.target.value)} autoComplete="off" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="(11) 99999-9999" autoComplete="off" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="observations">Observações</Label>
+            <Input id="observations" value={observations} onChange={e => setObservations(e.target.value)} placeholder="Opcional" />
+          </div>
+
+          <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--color-filete)' }}>
+            <Checkbox
+              checked={notify}
+              onChange={setNotify}
+              label={<span className="inline-flex items-center gap-1.5"><Whatsapp size={16} className="text-[var(--color-icone)]" /> Avisar um colaborador no WhatsApp</span>}
+            />
+            {notify && (
+              <div className="animate-fadeIn">
+                <Select
+                  label="Quem recebe o aviso"
+                  value={collaboratorId}
+                  onChange={setCollaboratorId}
+                  options={collaborators.map(c => ({ value: c.id, label: c.name }))}
+                  placeholder="Escolha o colaborador"
+                  invalido={!!error && !collaboratorId}
+                />
+              </div>
+            )}
+          </div>
+
+          {error && <AvisoErro>{error}</AvisoErro>}
+
+          <RodapeModal>
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={formLoading} className="min-w-32">
+              {formLoading
+                ? <span className="pontos-pulando" aria-label="Registrando"><i /><i /><i /></span>
+                : action === 'entrada' ? 'Registrar entrada' : 'Registrar saída'}
+            </Button>
+          </RodapeModal>
+        </form>
+      </Modal>
     </div>
   )
 }

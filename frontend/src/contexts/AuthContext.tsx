@@ -7,6 +7,8 @@ interface AuthContextType {
   session: Session | null
   user: User | null
   role: 'admin' | 'recepcao' | null
+  /** Nome em system_users, para o crachá da lateral. */
+  name: string | null
   isLoading: boolean
   signOut: () => Promise<void>
 }
@@ -17,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<'admin' | 'recepcao' | null>(null)
+  const [name, setName] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchUserRole(session.user.id)
       } else {
         setRole(null)
+        setName(null)
         setIsLoading(false)
       }
     })
@@ -52,12 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('system_users')
-        .select('role')
+        .select('role, name')
         .eq('id', userId)
         .single()
 
       if (data && !error) {
         setRole(data.role as 'admin' | 'recepcao')
+        setName(data.name ?? null)
       } else {
         // Sem linha em system_users o usuário não tem permissão no sistema.
         console.error('Usuário sem cadastro em system_users:', error?.message)
@@ -75,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, role, isLoading, signOut }}>
+    <AuthContext.Provider value={{ session, user, role, name, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   )

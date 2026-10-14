@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GGPost">
+  <!-- O P do logotipo GGPost (balao com os tres pontos), recortado na haste,
+       em branco sobre o azul petroleo da marca (#37809D). -->
+  <defs><clipPath id="haste"><rect x="263" y="0" width="120" height="200"/></clipPath></defs>
+  <rect width="64" height="64" rx="15" fill="#37809D"/>
+  <g transform="translate(-90.80 -4.80) scale(0.4)" fill="#FFFFFF">
+    <path d="M98 92L263 92L263 34L322 34C338.5 34 351 46.5 351 63L351 81C351 97 338 110.5 321 110.5L282 110.5L282 150L263 150L263 110.5L89 110.5ZM283 52L314 52C324 52 332 60 332 70L332 74C332 84 324 92 314 92L283 92Z" fill-rule="evenodd" clip-path="url(#haste)"/>
+    <circle cx="295" cy="72" r="4.8"/>
+    <circle cx="307.5" cy="72" r="4.8"/>
+    <circle cx="320" cy="72" r="4.8"/>
+  </g>
+</svg>
