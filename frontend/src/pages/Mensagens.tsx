@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/contexts/ToastContext'
+import { useTitulo } from '@/hooks/useTitulo'
+import { dataPorExtenso } from '@/lib/horario'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { MessageSquare, Save, Loader2, Info } from 'lucide-react'
+import { CabecalhoPagina } from '@/components/CabecalhoPagina'
+import { EstadoErro, EstadoVazio, Skeleton } from '@/components/Estados'
+import { MessageSquare } from '@/components/icones'
 
 type Template = {
   id: string
@@ -11,9 +15,28 @@ type Template = {
   message: string
 }
 
+const VARIAVEIS: Record<string, string[]> = {
+  entrada: ['nome_colaborador', 'nome_visitante', 'acao'],
+  saida: ['nome_colaborador', 'nome_visitante', 'acao'],
+  agendamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+  lembrete: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+}
+
+const NOMES: Record<string, { titulo: string; quando: string }> = {
+  entrada: { titulo: 'Entrada de visitante', quando: 'Sai quando a recepção registra uma entrada e marca o aviso para quem recebe a visita.' },
+  saida: { titulo: 'Saída de visitante', quando: 'Sai quando a recepção registra uma saída e marca o aviso.' },
+  agendamento: { titulo: 'Nova reunião', quando: 'Sai para os participantes quando a reunião é agendada.' },
+  lembrete: { titulo: 'Lembrete de reunião', quando: 'Sai para os participantes pouco antes do início.' },
+}
+
 export function Mensagens() {
+  useTitulo('Mensagens')
+  const avisar = useToast()
   const [templates, setTemplates] = useState<Template[]>([])
+  // Texto como está no banco, para saber o que mudou e ainda não foi salvo.
+  const [salvos, setSalvos] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [erroCarga, setErroCarga] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -23,9 +46,11 @@ export function Mensagens() {
   // Os templates padrão são criados pelo `supabase/seed.sql` (a escrita em
   // message_templates é restrita a admin pelo RLS, então não pode partir daqui).
   async function fetchTemplates() {
-    setLoading(true)
-    const { data } = await supabase.from('message_templates').select('*').order('type')
+    setErroCarga(null)
+    const { data, error } = await supabase.from('message_templates').select('*').order('type')
+    if (error) setErroCarga(error.message)
     setTemplates(data ?? [])
+    setSalvos(Object.fromEntries((data ?? []).map((t: Template) => [t.id, t.message])))
     setLoading(false)
   }
 
@@ -37,94 +62,92 @@ export function Mensagens() {
       .eq('id', id)
 
     if (error) {
-      alert('Erro ao salvar template: ' + error.message)
+      avisar('error', 'Não foi possível salvar: ' + error.message)
     } else {
-      alert('Template atualizado com sucesso! Lembre-se de fazer o deploy das Edge Functions novamente se você mudou variáveis.')
+      setSalvos(prev => ({ ...prev, [id]: newMessage }))
+      avisar('success', 'Mensagem salva. Os próximos avisos já saem com o texto novo.')
     }
     setSavingId(null)
   }
 
-  const getVariablesHelp = (type: string) => {
-    if (type === 'entrada' || type === 'saida') return 'Variáveis permitidas: {{nome_colaborador}}, {{nome_visitante}}, {{acao}}'
-    if (type === 'agendamento' || type === 'lembrete') return 'Variáveis permitidas: {{nome_colaborador}}, {{titulo}}, {{sala}}, {{data}}, {{horario}}'
-    return ''
-  }
-
-  const getTypeName = (type: string) => {
-    const map: Record<string, string> = {
-      'entrada': 'Visitante - Entrada',
-      'saida': 'Visitante - Saída',
-      'agendamento': 'Reunião - Novo Agendamento',
-      'lembrete': 'Reunião - Lembrete'
-    }
-    return map[type] || type
-  }
-
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-[var(--color-primary)]" />
-          Templates de Mensagem
-        </h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">Personalize os textos que serão enviados automaticamente via WhatsApp.</p>
-      </div>
+    <div>
+      <CabecalhoPagina
+        sobretitulo={dataPorExtenso()}
+        titulo="Mensagens"
+        descricao="Os textos que a recepção envia sozinha no WhatsApp."
+      />
 
       {loading ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+        <div className="space-y-4">
+          {[0, 1].map(i => (
+            <div key={i} className="folha space-y-3 p-5">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-72" />
+              <Skeleton className="h-32 w-full rounded-[14px]" />
+            </div>
+          ))}
         </div>
+      ) : erroCarga ? (
+        <EstadoErro mensagem={erroCarga} onTentarNovamente={() => { setLoading(true); fetchTemplates() }} />
       ) : templates.length === 0 ? (
-        <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
-          <CardContent className="pt-6 flex items-start gap-2 text-[var(--color-text-secondary)]">
-            <Info className="w-5 h-5 shrink-0 mt-0.5 text-[var(--color-primary)]" />
-            <p>
-              Nenhum template cadastrado. Execute o <code className="text-[var(--color-primary)]">supabase/seed.sql</code> no
-              banco para criar os textos padrão.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="folha">
+          <EstadoVazio
+            icone={<MessageSquare size={22} />}
+            titulo="Nenhuma mensagem cadastrada"
+            descricao={<>Rode o <code className="rounded-[6px] font-sans bg-[var(--color-preenchimento-2)] px-1.5 py-0.5 text-[13px] text-[var(--color-text)]">supabase/seed.sql</code> no banco para criar os textos padrão.</>}
+          />
+        </div>
       ) : (
-        <div className="grid gap-6">
-          {templates.map(template => (
-            <Card key={template.id} className="bg-[var(--color-surface)] border-[var(--color-border)]">
-              <CardHeader className="pb-3 border-b border-[var(--color-border)]">
-                <CardTitle className="text-lg text-[var(--color-text)]">{getTypeName(template.type)}</CardTitle>
-                <CardDescription className="text-[var(--color-text-secondary)]">
-                  Assunto Interno: {template.subject}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-[var(--color-primary-bg)] border border-[var(--color-primary)]/20 rounded-lg text-[var(--color-primary)] text-sm">
-                  <Info className="w-5 h-5 shrink-0 mt-0.5" />
-                  <p>{getVariablesHelp(template.type)}</p>
-                </div>
-                
-                <textarea 
-                  defaultValue={template.message}
+        <div className="space-y-4">
+          {templates.map(template => {
+            const nome = NOMES[template.type]
+            const alterado = salvos[template.id] !== template.message
+            const variaveis = VARIAVEIS[template.type] ?? []
+            return (
+              <section key={template.id} className="folha p-5" aria-labelledby={`tpl-${template.id}`}>
+                <h2 id={`tpl-${template.id}`} className="text-[17px] font-semibold leading-[22px] tracking-[-.014em] text-[var(--color-text)]">
+                  {nome?.titulo ?? template.type}
+                </h2>
+                <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
+                  {nome?.quando ?? `Assunto interno: ${template.subject}`}
+                </p>
+
+                <textarea
+                  aria-labelledby={`tpl-${template.id}`}
+                  aria-describedby={`vars-${template.id}`}
+                  value={template.message}
                   onChange={(e) => {
-                    // Update local state without saving
-                    const newTemplates = [...templates]
-                    const idx = newTemplates.findIndex(t => t.id === template.id)
-                    newTemplates[idx].message = e.target.value
-                    setTemplates(newTemplates)
+                    const valor = e.target.value
+                    setTemplates(prev => prev.map(t => t.id === template.id ? { ...t, message: valor } : t))
                   }}
-                  className="w-full min-h-[150px] bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md p-3 text-[var(--color-text)] font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  className="mt-4 min-h-[150px] w-full resize-none rounded-[14px] [field-sizing:content] border border-transparent bg-[var(--color-preenchimento)] p-3.5 text-[15px] leading-[23px] text-[var(--color-text)] transition-[background-color,box-shadow,border-color] duration-200 hover:bg-[var(--color-preenchimento-2)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:shadow-[0_0_0_4px_rgba(55,128,157,.14)] focus:outline-none"
                 />
 
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={() => handleUpdate(template.id, template.message)}
-                    disabled={savingId === template.id}
-                    className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-pressionado)] text-white"
-                  >
-                    {savingId === template.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Salvar Template
-                  </Button>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  {variaveis.length > 0 ? (
+                    <p id={`vars-${template.id}`} className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
+                      <span className="mr-0.5">Pode usar</span>
+                      {variaveis.map(v => (
+                        <code key={v} className="rounded-[8px] font-sans bg-[var(--color-preenchimento-2)] px-2 py-0.5 text-[12.5px] text-[var(--color-nav-text)]">{`{{${v}}}`}</code>
+                      ))}
+                    </p>
+                  ) : <span id={`vars-${template.id}`} />}
+                  <div className="flex items-center gap-3">
+                    {alterado && <span className="text-[13px] text-[var(--color-text-secondary)]">Alterações não salvas</span>}
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdate(template.id, template.message)}
+                      disabled={savingId === template.id || !alterado}
+                      className="min-w-20"
+                    >
+                      {savingId === template.id ? <span className="pontos-pulando" aria-label="Salvando"><i /><i /><i /></span> : 'Salvar'}
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </section>
+            )
+          })}
         </div>
       )}
     </div>

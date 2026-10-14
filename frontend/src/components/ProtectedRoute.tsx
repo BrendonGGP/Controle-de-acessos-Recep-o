@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2 } from 'lucide-react'
+import { Carregando } from '@/components/Estados'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -14,8 +14,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex justify-center items-center">
-        <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+      <div className="flex min-h-screen items-center justify-center">
+        <Carregando rotulo="Abrindo a recepção" />
       </div>
     )
   }

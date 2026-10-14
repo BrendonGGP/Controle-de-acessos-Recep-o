@@ -1,25 +1,20 @@
 import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Rótulo de campo da marca GGPost: 13px, secundário, acima do campo.
-const labelVariants = cva(
-  "text-[13px] font-medium leading-none text-[var(--color-text-secondary)] peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+/**
+ * Rotulo de campo da marca GGPost: 13px, peso medio, texto secundario —
+ * o mesmo que o GGPost desenha acima de Input, Select e campo de data.
+ */
+const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+  ({ className, ...props }, ref) => (
+    <label
+      ref={ref}
+      className={cn("block text-[13px] font-medium text-[var(--color-text-secondary)]", className)}
+      {...props}
+    />
+  ),
 )
-
-const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
-    VariantProps<typeof labelVariants>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root
-    ref={ref}
-    className={cn(labelVariants(), className)}
-    {...props}
-  />
-))
-Label.displayName = LabelPrimitive.Root.displayName
+Label.displayName = "Label"
 
 export { Label }

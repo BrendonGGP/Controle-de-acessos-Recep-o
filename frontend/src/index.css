@@ -88,6 +88,11 @@
   --color-text-secondary: #6B7280;
   --color-text-muted: oklch(0.62 0.018 258);
   --color-icone: #5D646E;
+  /* Texto de "nada escolhido" em controle proprio (Select, campo de data).
+     Diferente do placeholder de <input>, ele e texto do botao e conta no
+     contraste: o secundario misturado ao texto passa em AA sobre o
+     preenchimento cinza nos dois temas. Nao existe no GGPost. */
+  --color-placeholder-controle: color-mix(in oklab, var(--color-text-secondary), var(--color-text) 22%);
 
   /* ── Presença ── */
   --color-online: var(--marca-verde);
@@ -548,30 +553,12 @@ body {
 .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
 .animate-scaleIn { animation: scaleIn 0.2s ease-out; }
 
-/* Entrada vinda de baixo — o cartão de login e os blocos que sobem ao
-   aparecer. Não vem do GGPost: lá essa entrada é feita pelo painel
-   lateral, que desliza na horizontal. */
-@keyframes subirEntrada {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-slide-up { animation: subirEntrada 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-
-/* Entrada curta, de cima para baixo: o campo que se revela ao marcar uma
-   opção no formulário. */
-@keyframes descerEntrada {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-slide-down { animation: descerEntrada 0.2s ease-out both; }
 
 /* Reduce Motion — precisa vir DEPOIS das definicoes acima: mesma
    especificidade, quem vem por ultimo vence. */
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeIn,
   .animate-scaleIn,
-  .animate-slide-up,
-  .animate-slide-down,
   .painel-entra {
     animation: none;
   }

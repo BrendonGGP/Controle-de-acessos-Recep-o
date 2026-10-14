@@ -2,16 +2,28 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#00295d" />
+    <meta name="description" content="Recepção da suite GGPost: status das salas, registro de visitantes e avisos no WhatsApp para o Grupo Gomes Pires." />
 
-    <!-- As duas fontes do primeiro quadro: Nunito (títulos) e Inter (texto).
+    <!-- As duas fontes do primeiro quadro: Nunito (logotipo) e Inter (texto).
          As demais faces carregam pelo brand-fonts.css, sem bloquear a pintura. -->
     <link rel="preload" as="font" type="font/woff2" href="/fonts/Nunito-var-latin.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-var-latin.woff2" crossorigin />
     <link rel="stylesheet" href="/fonts/brand-fonts.css" />
+    <!-- Tema antes da primeira pintura (mesma regra de src/lib/tema.ts). -->
+    <script>
+      try {
+        var t = localStorage.getItem('ggpost:tema');
+        if (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
 
-    <title>Recepção GGP</title>
+    <title>GGPost Recepção</title>
   </head>
   <body>
     <div id="root"></div>
