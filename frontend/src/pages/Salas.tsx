@@ -20,7 +20,7 @@ import { AvisoErro, Carregando, EstadoErro, EstadoVazio, Skeleton } from '@/comp
 import { CalendarDays, Coffee, Pencil, Plus, Trash2, X } from '@/components/icones'
 
 // Tipos baseados no schema
-type Room = { id: string; name: string }
+type Room = { id: string; name: string; ativa: boolean; motivo_inatividade: string | null }
 type Collaborator = { id: string; name: string; email: string }
 type Booking = {
   id: string
@@ -113,7 +113,7 @@ export function Salas() {
   async function fetchDashboard() {
     setErroCarga(null)
     const [roomsRes, collabsRes, bookingsRes] = await Promise.all([
-      supabase.from('rooms').select('id, name').order('name'),
+      supabase.from('rooms').select('id, name, ativa, motivo_inatividade').order('name'),
       supabase.from('collaborators').select('id, name, email').order('name'),
       supabase.from('room_bookings')
         .select(BOOKING_FIELDS)
@@ -188,6 +188,20 @@ export function Salas() {
 
     if (!title || !roomId || !date || !startTime || !duration) {
       setError('Preencha título, sala, data, início e duração.')
+      setFormLoading(false)
+      return
+    }
+
+    // A sala pode ter sido inativada por outra pessoa enquanto este
+    // formulário estava aberto — e, ao editar, a reserva antiga pode
+    // apontar para uma sala que saiu de uso.
+    const salaEscolhida = rooms.find(r => r.id === roomId)
+    if (salaEscolhida && !salaEscolhida.ativa) {
+      setError(
+        `${salaEscolhida.name} está indisponível` +
+        (salaEscolhida.motivo_inatividade ? ` (${salaEscolhida.motivo_inatividade})` : '') +
+        '. Escolha outra sala.',
+      )
       setFormLoading(false)
       return
     }
@@ -491,7 +505,7 @@ export function Salas() {
               label="Sala"
               value={roomId}
               onChange={setRoomId}
-              options={rooms.map(r => ({ value: r.id, label: r.name }))}
+              options={rooms.filter(r => r.ativa).map(r => ({ value: r.id, label: r.name }))}
               placeholder="Escolha a sala"
             />
             <CampoData label="Data" valor={date} aoMudar={setDate} />
@@ -653,15 +667,25 @@ function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAg
     <article className="folha flex flex-col p-5">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-[17px] font-semibold leading-[22px] tracking-[-.014em] text-[var(--color-text)]">{room.name}</h2>
-          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
-            <span
-              aria-hidden="true"
-              className="size-2 rounded-full"
-              style={{ backgroundColor: atual ? 'var(--color-reuniao)' : 'var(--color-online)' }}
-            />
-            <span>{atual ? <>Ocupada até <span className="tabular-nums">{atual.end_time.substring(0, 5)}</span></> : 'Livre agora'}</span>
-          </p>
+          <h2 className={`truncate text-[17px] font-semibold leading-[22px] tracking-[-.014em] ${room.ativa ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'}`}>
+            {room.name}
+          </h2>
+          {room.ativa ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full"
+                style={{ backgroundColor: atual ? 'var(--color-reuniao)' : 'var(--color-online)' }}
+              />
+              <span>{atual ? <>Ocupada até <span className="tabular-nums">{atual.end_time.substring(0, 5)}</span></> : 'Livre agora'}</span>
+            </p>
+          ) : (
+            // Mostrar a sala esmaecida, em vez de escondê-la, evita a dúvida
+            // "cadê a sala Ferrari?" — e diz o porquê de não dar para agendar.
+            <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
+              Indisponível{room.motivo_inatividade ? ` — ${room.motivo_inatividade}` : ''}
+            </p>
+          )}
         </div>
       </header>
 
@@ -745,7 +769,14 @@ function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAg
         <Button variant="secondary" size="sm" className="flex-1" onClick={aoVerAgenda}>
           Ver agenda
         </Button>
-        <Button variant="tint" size="sm" className="flex-1" onClick={aoAgendar}>
+        <Button
+          variant="tint"
+          size="sm"
+          className="flex-1"
+          onClick={aoAgendar}
+          disabled={!room.ativa}
+          title={room.ativa ? undefined : 'Sala indisponível no momento'}
+        >
           <Plus /> Agendar
         </Button>
       </footer>
