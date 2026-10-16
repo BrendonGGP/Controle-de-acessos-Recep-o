@@ -14,7 +14,12 @@ import { CabecalhoPagina } from '@/components/CabecalhoPagina'
 import { AvisoErro, EstadoErro, EstadoVazio, Skeleton } from '@/components/Estados'
 import { CalendarDays, Pencil, Plus, Trash2, Users } from '@/components/icones'
 
-type Room = { id: string; name: string }
+type Room = {
+  id: string
+  name: string
+  ativa: boolean
+  motivo_inatividade: string | null
+}
 type SystemUser = { id: string; name: string; email: string; role: string }
 
 const PAPEIS = {
@@ -62,6 +67,12 @@ export function Admin() {
   const [newRoomName, setNewRoomName] = useState('')
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
+  // Inativação temporária
+  const [inativandoSala, setInativandoSala] = useState<Room | null>(null)
+  const [motivoInatividade, setMotivoInatividade] = useState('')
+  const [salvandoInatividade, setSalvandoInatividade] = useState(false)
+  /** null enquanto a contagem de reservas futuras ainda não voltou. */
+  const [reservasFuturas, setReservasFuturas] = useState<number | null>(null)
 
   // Users State
   const [users, setUsers] = useState<SystemUser[]>([])
@@ -106,6 +117,58 @@ export function Admin() {
     } else {
       avisar('error', 'Não foi possível criar a sala: ' + error.message)
     }
+  }
+
+  // Inativar não exclui: a sala sai de uso por um tempo (manutenção, reforma)
+  // e volta depois, com o histórico de reservas preservado.
+  async function abrirInativacao(sala: Room) {
+    setMotivoInatividade('')
+    setReservasFuturas(null)
+    setInativandoSala(sala)
+
+    // Quantas reuniões já marcadas essa sala tem daqui para frente? Quem
+    // inativa precisa saber antes de confirmar — as reservas continuam
+    // valendo, e alguém vai ter que remarcar.
+    const hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split('T')[0]
+    const { count } = await supabase
+      .from('room_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('room_id', sala.id)
+      .gte('booking_date', hoje)
+
+    setReservasFuturas(count ?? 0)
+  }
+
+  async function confirmarInativacao() {
+    if (!inativandoSala) return
+    setSalvandoInatividade(true)
+    const { error } = await supabase
+      .from('rooms')
+      .update({ ativa: false, motivo_inatividade: motivoInatividade.trim() || null })
+      .eq('id', inativandoSala.id)
+    setSalvandoInatividade(false)
+
+    if (error) {
+      avisar('error', 'Não foi possível inativar a sala: ' + error.message)
+      return
+    }
+    avisar('success', `${inativandoSala.name} ficou indisponível.`)
+    setInativandoSala(null)
+    fetchRooms()
+  }
+
+  async function reativarSala(sala: Room) {
+    const { error } = await supabase
+      .from('rooms')
+      .update({ ativa: true })
+      .eq('id', sala.id)
+
+    if (error) {
+      avisar('error', 'Não foi possível reativar a sala: ' + error.message)
+      return
+    }
+    avisar('success', `${sala.name} voltou a aceitar reservas.`)
+    fetchRooms()
   }
 
   async function handleDeleteRoom() {
@@ -270,7 +333,37 @@ export function Admin() {
               <ul className="border-t px-2 pb-2" style={{ borderColor: 'var(--color-filete)' }}>
                 {rooms.map(room => (
                   <li key={room.id} className="flex items-center gap-3 rounded-[16px] border-t px-3 py-2 transition-colors first:border-t-0 hover:bg-[rgb(var(--tinta)/.03)]" style={{ borderColor: 'var(--color-filete)' }}>
-                    <span className="flex-1 truncate text-[15px] font-medium text-[var(--color-text)]">{room.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className={`block truncate text-[15px] font-medium ${room.ativa ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'}`}>
+                        {room.name}
+                      </span>
+                      {!room.ativa && (
+                        <span className="text-[13px] text-[var(--color-text-secondary)]">
+                          Indisponível{room.motivo_inatividade ? ` — ${room.motivo_inatividade}` : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {room.ativa ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => abrirInativacao(room)}
+                        title="Deixar indisponível por um tempo"
+                      >
+                        Inativar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="tint"
+                        size="sm"
+                        onClick={() => reativarSala(room)}
+                        title="Voltar a aceitar reservas"
+                      >
+                        Reativar
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       size="icon"
@@ -345,6 +438,69 @@ export function Admin() {
           )}
         </section>
       )}
+
+      <Modal
+        aberto={!!inativandoSala}
+        aoFechar={() => setInativandoSala(null)}
+        titulo={`Deixar ${inativandoSala?.name ?? ''} indisponível`}
+        tamanho="sm"
+      >
+        <form
+          onSubmit={e => { e.preventDefault(); confirmarInativacao() }}
+          className="space-y-4"
+        >
+          <p className="text-[15px] text-[var(--color-text-secondary)]">
+            A sala para de aceitar reservas novas e aparece marcada na tela de Salas.
+            Nada é excluído — é só reativar quando voltar ao normal.
+          </p>
+
+          {/* Quem inativa precisa saber o que já está marcado: as reservas
+              continuam valendo e alguém vai ter que remarcar. */}
+          {reservasFuturas === null ? (
+            <p className="text-[13px] text-[var(--color-text-muted)]">Verificando reservas…</p>
+          ) : reservasFuturas > 0 ? (
+            <div className="rounded-[12px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-bg)] px-3.5 py-3">
+              <p className="text-[13px] text-[var(--color-text)]">
+                Esta sala tem <strong>{reservasFuturas}</strong>{' '}
+                {reservasFuturas === 1 ? 'reunião marcada' : 'reuniões marcadas'} daqui para frente.
+              </p>
+              <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
+                Elas continuam valendo e aparecendo na agenda. Avise os participantes ou
+                remarque pela tela de Salas.
+              </p>
+            </div>
+          ) : (
+            <p className="text-[13px] text-[var(--color-text-secondary)]">
+              Nenhuma reunião marcada nesta sala daqui para frente.
+            </p>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="motivo_inatividade">Motivo (opcional)</Label>
+            <Input
+              id="motivo_inatividade"
+              value={motivoInatividade}
+              onChange={e => setMotivoInatividade(e.target.value)}
+              placeholder="Ex: em manutenção"
+              maxLength={80}
+              aria-describedby="motivo_dica"
+              autoComplete="off"
+            />
+            <p id="motivo_dica" className="text-[13px] text-[var(--color-text-secondary)]">
+              Aparece junto do nome da sala, para a equipe saber o porquê.
+            </p>
+          </div>
+
+          <RodapeModal>
+            <Button type="button" variant="ghost" onClick={() => setInativandoSala(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={salvandoInatividade}>
+              {salvandoInatividade ? 'Salvando…' : 'Deixar indisponível'}
+            </Button>
+          </RodapeModal>
+        </form>
+      </Modal>
 
       <Modal
         aberto={isUserModalOpen}
