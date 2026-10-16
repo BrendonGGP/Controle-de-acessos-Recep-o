@@ -17,7 +17,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Flutuante } from '@/components/ui/flutuante'
 import { CabecalhoPagina } from '@/components/CabecalhoPagina'
 import { AvisoErro, Carregando, EstadoErro, EstadoVazio, Skeleton } from '@/components/Estados'
-import { CalendarDays, Coffee, Pencil, Plus, Trash2, X } from '@/components/icones'
+import { CalendarDays, Coffee, Eye, EyeOff, Pencil, Plus, Trash2, X } from '@/components/icones'
 
 // Tipos baseados no schema
 type Room = { id: string; name: string; ativa: boolean; motivo_inatividade: string | null }
@@ -65,6 +65,15 @@ export function Salas() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [loading, setLoading] = useState(true)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
+
+  // Inativação temporária da sala. O controle mora aqui, e não só no Admin,
+  // porque quem percebe que a sala saiu de uso é a recepção — que não tem
+  // acesso àquela tela.
+  const [inativandoSala, setInativandoSala] = useState<Room | null>(null)
+  const [motivoInatividade, setMotivoInatividade] = useState('')
+  const [salvandoInatividade, setSalvandoInatividade] = useState(false)
+  /** null enquanto a contagem de reservas futuras ainda não voltou. */
+  const [reservasFuturas, setReservasFuturas] = useState<number | null>(null)
 
   // Dashboard state
   const [dashboardBookings, setDashboardBookings] = useState<Booking[]>([])
@@ -173,6 +182,51 @@ export function Salas() {
     setService(booking.service === 'com_cafe' ? 'com_cafe' : 'sem_cafe')
     setSelectedCollabs(booking.booking_participants?.map(p => p.collaborator_id) || [])
     setIsModalOpen(true)
+  }
+
+  async function abrirInativacao(sala: Room) {
+    setMotivoInatividade('')
+    setReservasFuturas(null)
+    setInativandoSala(sala)
+
+    // Quantas reuniões já marcadas essa sala tem daqui para frente? Quem
+    // inativa precisa saber antes de confirmar — as reservas continuam
+    // valendo, e alguém vai ter que remarcar.
+    const { count } = await supabase
+      .from('room_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('room_id', sala.id)
+      .gte('booking_date', hojeLocal())
+
+    setReservasFuturas(count ?? 0)
+  }
+
+  async function confirmarInativacao() {
+    if (!inativandoSala) return
+    setSalvandoInatividade(true)
+    const { error } = await supabase
+      .from('rooms')
+      .update({ ativa: false, motivo_inatividade: motivoInatividade.trim() || null })
+      .eq('id', inativandoSala.id)
+    setSalvandoInatividade(false)
+
+    if (error) {
+      avisar('error', 'Não foi possível inativar a sala: ' + error.message)
+      return
+    }
+    avisar('success', `${inativandoSala.name} ficou indisponível.`)
+    setInativandoSala(null)
+    fetchDashboard()
+  }
+
+  async function reativarSala(sala: Room) {
+    const { error } = await supabase.from('rooms').update({ ativa: true }).eq('id', sala.id)
+    if (error) {
+      avisar('error', 'Não foi possível reativar a sala: ' + error.message)
+      return
+    }
+    avisar('success', `${sala.name} voltou a aceitar reservas.`)
+    fetchDashboard()
   }
 
   const openAgenda = (room: Room) => {
@@ -441,11 +495,73 @@ export function Salas() {
                 responsavel={currentBooking ? getFirstParticipantName(currentBooking) : null}
                 aoAgendar={() => openNewModal(room.id)}
                 aoVerAgenda={() => openAgenda(room)}
+                aoInativar={() => abrirInativacao(room)}
+                aoReativar={() => reativarSala(room)}
               />
             )
           })}
         </div>
       )}
+
+      {/* Deixar a sala indisponível por um tempo */}
+      <Modal
+        aberto={!!inativandoSala}
+        aoFechar={() => setInativandoSala(null)}
+        titulo={`Deixar ${inativandoSala?.name ?? ''} indisponível`}
+        tamanho="sm"
+      >
+        <form onSubmit={e => { e.preventDefault(); confirmarInativacao() }} className="space-y-4">
+          <p className="text-[15px] text-[var(--color-text-secondary)]">
+            A sala para de aceitar reservas novas e aparece marcada aqui.
+            Nada é excluído — é só reativar quando voltar ao normal.
+          </p>
+
+          {/* Quem inativa precisa saber o que já está marcado: as reservas
+              continuam valendo e alguém vai ter que remarcar. */}
+          {reservasFuturas === null ? (
+            <p className="text-[13px] text-[var(--color-text-muted)]">Verificando reservas…</p>
+          ) : reservasFuturas > 0 ? (
+            <div className="rounded-[12px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-bg)] px-3.5 py-3">
+              <p className="text-[13px] text-[var(--color-text)]">
+                Esta sala tem <strong>{reservasFuturas}</strong>{' '}
+                {reservasFuturas === 1 ? 'reunião marcada' : 'reuniões marcadas'} daqui para frente.
+              </p>
+              <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
+                Elas continuam valendo e aparecendo na agenda. Avise os participantes ou remarque.
+              </p>
+            </div>
+          ) : (
+            <p className="text-[13px] text-[var(--color-text-secondary)]">
+              Nenhuma reunião marcada nesta sala daqui para frente.
+            </p>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="motivo_inatividade">Motivo (opcional)</Label>
+            <Input
+              id="motivo_inatividade"
+              value={motivoInatividade}
+              onChange={e => setMotivoInatividade(e.target.value)}
+              placeholder="Ex: em manutenção"
+              maxLength={80}
+              aria-describedby="motivo_dica"
+              autoComplete="off"
+            />
+            <p id="motivo_dica" className="text-[13px] text-[var(--color-text-secondary)]">
+              Aparece junto do nome da sala, para a equipe saber o porquê.
+            </p>
+          </div>
+
+          <RodapeModal>
+            <Button type="button" variant="ghost" onClick={() => setInativandoSala(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={salvandoInatividade}>
+              {salvandoInatividade ? 'Salvando…' : 'Deixar indisponível'}
+            </Button>
+          </RodapeModal>
+        </form>
+      </Modal>
 
       {/* Agenda da sala (todas as reuniões de um dia) */}
       <Modal
@@ -646,7 +762,7 @@ export function Salas() {
  * quanto já passou, e a régua do dia — o mesmo desenho da agenda do "Meu dia"
  * do GGPost, com a linha do agora atravessando.
  */
-function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAgendar, aoVerAgenda }: {
+function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAgendar, aoVerAgenda, aoInativar, aoReativar }: {
   room: Room
   bookings: Booking[]
   atual?: Booking
@@ -655,6 +771,8 @@ function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAg
   responsavel: string | null
   aoAgendar: () => void
   aoVerAgenda: () => void
+  aoInativar: () => void
+  aoReativar: () => void
 }) {
   const fimAtual = atual ? timeToMinutes(atual.end_time) : 0
   const progresso = atual
@@ -687,6 +805,19 @@ function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAg
             </p>
           )}
         </div>
+
+        {/* Disponibilidade fica aqui, longe das ações do rodapé: é uma
+            mudança de estado da sala, não uma ação sobre reuniões. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={room.ativa ? aoInativar : aoReativar}
+          aria-label={room.ativa ? `Deixar ${room.name} indisponível` : `Reativar ${room.name}`}
+          title={room.ativa ? 'Deixar indisponível' : 'Voltar a aceitar reservas'}
+          className="-mr-2 -mt-1 shrink-0"
+        >
+          {room.ativa ? <EyeOff size={18} /> : <Eye size={18} />}
+        </Button>
       </header>
 
       <div className="mt-4 min-h-[86px] rounded-[16px] bg-[var(--color-preenchimento)] px-3.5 py-3">
