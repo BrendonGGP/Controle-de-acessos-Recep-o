@@ -26,6 +26,15 @@ type AccessLog = {
   created_at: string
 }
 
+/** Entrada ainda sem baixa: quem está na empresa agora. */
+type Presente = {
+  id: string
+  visitor_name: string
+  document: string | null
+  category: string
+  created_at: string
+}
+
 const CATEGORIAS = [
   { value: 'visitas_reunioes', label: 'Visita ou reunião' },
   { value: 'prestadores_servico', label: 'Prestador de serviço' },
@@ -72,20 +81,52 @@ export function ControleAcesso() {
   const [notify, setNotify] = useState(false)
   const [collaboratorId, setCollaboratorId] = useState('')
 
+  // Quem entrou e ainda não teve a saída registrada. A baixa vira um clique
+  // na pessoa, em vez de digitar o nome de novo.
+  const [presentes, setPresentes] = useState<Presente[]>([])
+  const [buscaPresente, setBuscaPresente] = useState('')
+  const [baixaId, setBaixaId] = useState<string | null>(null)
+
   useEffect(() => {
     fetchInitialData()
   }, [])
 
   async function fetchInitialData() {
     setErroCarga(null)
-    const [collabsRes, logsRes] = await Promise.all([
+    const [collabsRes, logsRes, presentesRes] = await Promise.all([
       supabase.from('collaborators').select('id, name').order('name'),
-      supabase.from('access_logs').select('id, action, category, visitor_name, document, created_at').order('created_at', { ascending: false }).limit(20)
+      supabase.from('access_logs').select('id, action, category, visitor_name, document, created_at').order('created_at', { ascending: false }).limit(20),
+      // Quem entrou e ainda não saiu, do mais recente para o mais antigo.
+      supabase
+        .from('access_logs')
+        .select('id, visitor_name, document, category, created_at')
+        .eq('action', 'entrada')
+        .is('saida_em', null)
+        .order('created_at', { ascending: false }),
     ])
     if (logsRes.error) setErroCarga(logsRes.error.message)
     if (collabsRes.data) setCollaborators(collabsRes.data)
     if (logsRes.data) setLogs(logsRes.data)
+    if (presentesRes.data) setPresentes(presentesRes.data as Presente[])
     setLoading(false)
+  }
+
+  /** Dá baixa numa entrada. A função no banco cria a saída e marca a
+      entrada numa transação só, para não haver baixa pela metade. */
+  async function darBaixa(entrada: Presente) {
+    setBaixaId(entrada.id)
+    const { error } = await supabase.rpc('registrar_saida', {
+      p_entrada_id: entrada.id,
+      p_observacoes: null,
+    })
+    setBaixaId(null)
+
+    if (error) {
+      avisar('error', 'Não foi possível registrar a saída: ' + error.message)
+      return
+    }
+    avisar('success', `Saída de ${entrada.visitor_name} registrada.`)
+    fetchInitialData()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -276,6 +317,16 @@ export function ControleAcesso() {
             ]}
           />
 
+          {action === 'saida' ? (
+            <ListaPresentes
+              presentes={presentes}
+              busca={buscaPresente}
+              aoBuscar={setBuscaPresente}
+              baixaId={baixaId}
+              aoDarBaixa={darBaixa}
+            />
+          ) : (
+          <>
           <div className="space-y-1.5">
             <Label htmlFor="visitorName">Nome do visitante</Label>
             <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required placeholder="Nome completo" autoComplete="off" />
@@ -320,19 +371,109 @@ export function ControleAcesso() {
           </div>
 
           {error && <AvisoErro>{error}</AvisoErro>}
+          </>
+          )}
 
           <RodapeModal>
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancelar
+              {action === 'saida' ? 'Fechar' : 'Cancelar'}
             </Button>
-            <Button type="submit" disabled={formLoading} className="min-w-32">
-              {formLoading
-                ? <span className="pontos-pulando" aria-label="Registrando"><i /><i /><i /></span>
-                : action === 'entrada' ? 'Registrar entrada' : 'Registrar saída'}
-            </Button>
+            {action === 'entrada' && (
+              <Button type="submit" disabled={formLoading} className="min-w-32">
+                {formLoading
+                  ? <span className="pontos-pulando" aria-label="Registrando"><i /><i /><i /></span>
+                  : 'Registrar entrada'}
+              </Button>
+            )}
           </RodapeModal>
         </form>
       </Modal>
+    </div>
+  )
+}
+
+/**
+ * Quem está na empresa agora, para dar baixa com um clique.
+ *
+ * Antes a saída era um registro solto: a recepcionista digitava o nome de
+ * novo e nada ligava a saída à entrada — o sistema nunca soube quem ainda
+ * estava no prédio.
+ */
+function ListaPresentes({ presentes, busca, aoBuscar, baixaId, aoDarBaixa }: {
+  presentes: Presente[]
+  busca: string
+  aoBuscar: (v: string) => void
+  baixaId: string | null
+  aoDarBaixa: (p: Presente) => void
+}) {
+  const termo = busca.trim().toLowerCase()
+  const filtrados = termo
+    ? presentes.filter(p =>
+        p.visitor_name.toLowerCase().includes(termo) ||
+        (p.document ?? '').toLowerCase().includes(termo))
+    : presentes
+
+  if (presentes.length === 0) {
+    return (
+      <EstadoVazio
+        icone={<DoorOpen size={22} />}
+        titulo="Ninguém na recepção"
+        descricao="Todas as entradas já tiveram a saída registrada."
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="busca_presente">Quem está saindo?</Label>
+        <Input
+          id="busca_presente"
+          value={busca}
+          onChange={e => aoBuscar(e.target.value)}
+          placeholder="Buscar por nome ou documento"
+          autoComplete="off"
+        />
+      </div>
+
+      {filtrados.length === 0 ? (
+        <p className="py-6 text-center text-[13px] text-[var(--color-text-secondary)]">
+          Ninguém encontrado com “{busca}”.
+        </p>
+      ) : (
+        <ul className="max-h-[320px] overflow-y-auto">
+          {filtrados.map(p => (
+            <li
+              key={p.id}
+              className="flex items-center gap-3 border-t py-2.5 first:border-t-0"
+              style={{ borderColor: 'var(--color-filete)' }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-[var(--color-text)]">{p.visitor_name}</p>
+                <p className="truncate text-[13px] text-[var(--color-text-secondary)]">
+                  {[
+                    nomeCategoria(p.category),
+                    `desde ${new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+                    p.document || null,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => aoDarBaixa(p)}
+                disabled={baixaId !== null}
+                className="shrink-0"
+              >
+                {baixaId === p.id
+                  ? <span className="pontos-pulando" aria-label="Registrando"><i /><i /><i /></span>
+                  : <><LogOut size={16} /> Saída</>}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
