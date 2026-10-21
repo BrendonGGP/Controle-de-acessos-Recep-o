@@ -30,3 +30,30 @@ export function formatarDuracao(min: number): string {
 export function dataPorExtenso(agora = new Date()): string {
   return agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
+
+/** Data (AAAA-MM-DD) daqui a N dias, no fuso do aparelho. */
+export function emDias(dias: number, agora = new Date()): string {
+  const d = new Date(agora)
+  d.setDate(d.getDate() + dias)
+  return hojeLocal(d)
+}
+
+/**
+ * Rotulo do grupo de um dia numa lista de datas: "Hoje", "Amanha" ou
+ * "quinta-feira, 23 de outubro".
+ *
+ * Recebe a data como "AAAA-MM-DD" e monta o Date pelos numeros, e nao por
+ * `new Date(iso)`: a string pura e lida como UTC e, no Brasil, cairia no dia
+ * anterior.
+ */
+export function rotuloDoDia(iso: string, agora = new Date()): string {
+  if (iso === hojeLocal(agora)) return 'Hoje'
+  if (iso === emDias(1, agora)) return 'Amanhã'
+
+  const [ano, mes, dia] = iso.split('-').map(Number)
+  return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+}

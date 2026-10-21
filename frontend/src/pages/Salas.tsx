@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAgora } from '@/hooks/useAgora'
 import { useTitulo } from '@/hooks/useTitulo'
-import { dataPorExtenso, formatarDuracao, hojeLocal, minutesToTime, timeToMinutes } from '@/lib/horario'
+import { dataPorExtenso, emDias, formatarDuracao, hojeLocal, minutesToTime, rotuloDoDia, timeToMinutes } from '@/lib/horario'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,6 +50,25 @@ const OPCOES_DURACAO = [
 const BOOKING_FIELDS = 'id, room_id, title, booking_date, start_time, end_time, service, rooms(name), booking_participants(collaborator_id)'
 
 // Régua do dia no cartão da sala: das 7h às 21h, o expediente da recepção.
+/** Alcance do painel "Próximas reuniões", em dias a partir de hoje. */
+const DIAS_FUTURAS = 30
+
+/**
+ * Agrupa as reuniões por dia, preservando a ordem em que vieram do banco
+ * (por data e depois por horário). Devolve pares [data, reuniões] para a
+ * lista sair como uma agenda: um cabeçalho de dia, as reuniões sob ele.
+ */
+function agruparPorDia(reunioes: Booking[]): [string, Booking[]][] {
+  const porDia = new Map<string, Booking[]>()
+  for (const b of reunioes) {
+    const dia = b.booking_date
+    const lista = porDia.get(dia)
+    if (lista) lista.push(b)
+    else porDia.set(dia, [b])
+  }
+  return [...porDia.entries()]
+}
+
 const REGUA_INICIO = 7 * 60
 const REGUA_FIM = 21 * 60
 
@@ -65,6 +84,12 @@ export function Salas() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [loading, setLoading] = useState(true)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
+
+  // A agenda de uma sala abre em duas vistas: o dia escolhido (como era) ou
+  // as próximas dessa sala, sem ter que caçar data por data.
+  const [agendaVista, setAgendaVista] = useState<'dia' | 'proximas'>('dia')
+  const [proximasSala, setProximasSala] = useState<Booking[]>([])
+  const [loadingProximasSala, setLoadingProximasSala] = useState(false)
 
   // Inativação temporária da sala. O controle mora aqui, e não só no Admin,
   // porque quem percebe que a sala saiu de uso é a recepção — que não tem
@@ -184,6 +209,22 @@ export function Salas() {
     setIsModalOpen(true)
   }
 
+  /** Próximos 30 dias de uma sala só, para a aba "Próximas" da agenda. */
+  async function carregarProximasSala(roomId: string) {
+    setLoadingProximasSala(true)
+    const { data } = await supabase
+      .from('room_bookings')
+      .select(BOOKING_FIELDS)
+      .eq('room_id', roomId)
+      .gte('booking_date', hojeLocal())
+      .lte('booking_date', emDias(DIAS_FUTURAS))
+      .order('booking_date')
+      .order('start_time')
+
+    setProximasSala((data ?? []) as unknown as Booking[])
+    setLoadingProximasSala(false)
+  }
+
   async function abrirInativacao(sala: Room) {
     setMotivoInatividade('')
     setReservasFuturas(null)
@@ -232,6 +273,10 @@ export function Salas() {
   const openAgenda = (room: Room) => {
     setAgendaRoom(room)
     setAgendaDate(todayStr)
+    // Abre sempre no dia de hoje: quem clica em "Ver agenda" costuma querer
+    // saber o que tem agora. A aba "Próximas" fica a um clique.
+    setAgendaVista('dia')
+    setProximasSala([])
     setIsAgendaOpen(true)
   }
 
@@ -568,14 +613,66 @@ export function Salas() {
         aberto={isAgendaOpen && !!agendaRoom}
         aoFechar={() => setIsAgendaOpen(false)}
         titulo={`Agenda da ${agendaRoom?.name ?? 'sala'}`}
-        descricao="Reuniões marcadas para esta sala no dia escolhido."
+        descricao={
+          agendaVista === 'dia'
+            ? 'Reuniões marcadas para esta sala no dia escolhido.'
+            : `O que está marcado nesta sala nos próximos ${DIAS_FUTURAS} dias.`
+        }
         tamanho="lg"
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <CampoData label="Dia" valor={agendaDate} aoMudar={setAgendaDate} className="w-full sm:w-56" />
+          <Segmentado
+            rotulo="Como ver a agenda"
+            tipo="abas"
+            valor={agendaVista}
+            aoMudar={v => {
+              const vista = v as 'dia' | 'proximas'
+              setAgendaVista(vista)
+              // Busca sob demanda: quem só quer ver hoje não paga a consulta
+              // dos 30 dias.
+              if (vista === 'proximas' && agendaRoom) carregarProximasSala(agendaRoom.id)
+            }}
+            opcoes={[
+              { valor: 'dia', rotulo: 'Por dia' },
+              { valor: 'proximas', rotulo: 'Próximas' },
+            ]}
+          />
           <Button variant="tint" onClick={() => { const r = agendaRoom; setIsAgendaOpen(false); openNewModal(r?.id); setDate(agendaDate >= todayStr ? agendaDate : todayStr) }}>
             <Plus /> Agendar nesta sala
           </Button>
+        </div>
+
+        {agendaVista === 'proximas' ? (
+          loadingProximasSala ? (
+            <div className="flex justify-center py-10"><Carregando rotulo="Carregando as próximas reuniões" /></div>
+          ) : proximasSala.length === 0 ? (
+            <div className="mt-6">
+              <EstadoVazio
+                icone={<CalendarDays size={22} />}
+                titulo="Nenhuma reunião marcada"
+                descricao={`Esta sala está livre nos próximos ${DIAS_FUTURAS} dias.`}
+              />
+            </div>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {agruparPorDia(proximasSala).map(([dia, reunioes]) => (
+                <ListaReunioes
+                  key={dia}
+                  titulo={rotuloDoDia(dia)}
+                  reunioes={reunioes}
+                  vazio=""
+                  comContagem={false}
+                  participante={getFirstParticipantName}
+                  aoEditar={b => { setIsAgendaOpen(false); openEditModal(b) }}
+                  aoExcluir={setDeletingBooking}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+        <>
+        <div className="mt-4">
+          <CampoData label="Dia" valor={agendaDate} aoMudar={setAgendaDate} className="w-full sm:w-56" />
         </div>
 
         {loadingAgenda ? (
@@ -601,6 +698,8 @@ export function Salas() {
               />
             )}
           </div>
+        )}
+        </>
         )}
       </Modal>
 
@@ -915,7 +1014,7 @@ function CartaoSala({ room, bookings, atual, proxima, nowMins, responsavel, aoAg
   )
 }
 
-function ListaReunioes({ titulo, reunioes, vazio, participante, aoEditar, aoExcluir, encerradas = false }: {
+function ListaReunioes({ titulo, reunioes, vazio, participante, aoEditar, aoExcluir, encerradas = false, comSala = false, comContagem = true }: {
   titulo: string
   reunioes: Booking[]
   vazio: string
@@ -923,12 +1022,18 @@ function ListaReunioes({ titulo, reunioes, vazio, participante, aoEditar, aoExcl
   aoEditar: (b: Booking) => void
   aoExcluir?: (b: Booking) => void
   encerradas?: boolean
+  /** Mostra o nome da sala em cada linha. Na agenda de uma sala só seria
+      redundante; num painel que cruza salas, é o que diferencia as linhas. */
+  comSala?: boolean
+  /** Contador ao lado do título. Útil em "Próximas 3"/"Encerradas 2"; num
+      cabeçalho de dia vira ruído, já que as reuniões estão logo abaixo. */
+  comContagem?: boolean
 }) {
   return (
     <section>
       <h3 className="mb-1 flex items-baseline gap-2 text-[13px] font-semibold text-[var(--color-text-secondary)]">
         {titulo}
-        {reunioes.length > 0 && <span className="font-medium tabular-nums text-[var(--color-text-secondary)]">{reunioes.length}</span>}
+        {comContagem && reunioes.length > 0 && <span className="font-medium tabular-nums text-[var(--color-text-secondary)]">{reunioes.length}</span>}
       </h3>
       {reunioes.length === 0 ? (
         <p className="py-3 text-sm text-[var(--color-text-secondary)]">{vazio}</p>
@@ -945,7 +1050,11 @@ function ListaReunioes({ titulo, reunioes, vazio, participante, aoEditar, aoExcl
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-[15px] font-medium ${encerradas ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text)]'}`}>{b.title}</p>
                   <p className="truncate text-[13px] text-[var(--color-text-secondary)]">
-                    {[quem, b.service === 'com_cafe' ? 'com café' : null].filter(Boolean).join(' · ') || 'Sem participantes'}
+                    {[
+                      comSala ? b.rooms?.name : null,
+                      quem,
+                      b.service === 'com_cafe' ? 'com café' : null,
+                    ].filter(Boolean).join(' · ') || 'Sem participantes'}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
