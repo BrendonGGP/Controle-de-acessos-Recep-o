@@ -29,7 +29,8 @@ type AccessLog = {
 const CATEGORIAS = [
   { value: 'visitas_reunioes', label: 'Visita ou reunião' },
   { value: 'prestadores_servico', label: 'Prestador de serviço' },
-  { value: 'entregas_mercadoria', label: 'Entrega' },
+  { value: 'entregas_mercadoria', label: 'Entrega de mercadoria' },
+  { value: 'entregas_alimento', label: 'Entrega de alimento' },
   { value: 'entrevista_rh', label: 'Entrevista RH' },
   { value: 'stands', label: 'Stand' },
   { value: 'treinamentos_onboarding', label: 'Treinamento' },

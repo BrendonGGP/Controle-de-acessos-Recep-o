@@ -33,6 +33,11 @@ serve(async (req: Request) => {
       throw new Error('booking_id é obrigatório.')
     }
 
+    // 'agendamento' (padrão) avisa que a reunião foi marcada; 'cancelamento'
+    // avisa que ela caiu. O fluxo é o mesmo — buscar participantes e enviar —,
+    // só muda o template que o n8n escolhe.
+    const evento = payload.evento === 'cancelamento' ? 'cancelamento' : 'agendamento'
+
     const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
     const webhookToken = Deno.env.get('N8N_WEBHOOK_TOKEN')
 
@@ -50,7 +55,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
         ...(webhookToken ? { 'x-webhook-token': webhookToken } : {}),
       },
-      body: JSON.stringify({ booking_id: bookingId }),
+      body: JSON.stringify({ booking_id: bookingId, evento }),
     })
 
     const corpo = await response.text()
