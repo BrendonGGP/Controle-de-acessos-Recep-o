@@ -418,13 +418,30 @@ export function Salas() {
   const handleDeleteBooking = async () => {
     if (!deletingBooking) return
     setDeleteLoading(true)
+
+    // O aviso sai ANTES do delete: `booking_participants` cai em cascata
+    // junto da reserva, e depois nao haveria mais para quem enviar.
+    // Se o WhatsApp falhar, a exclusao segue — o importante e tirar a
+    // reuniao da agenda; o aviso e um extra.
+    const { error: avisoError } = await supabase.functions.invoke('notify-booking', {
+      body: { booking_id: deletingBooking.id, evento: 'cancelamento' },
+    })
+    if (avisoError) {
+      console.error('Erro ao avisar o cancelamento:', avisoError.message)
+    }
+
     const { error } = await supabase.from('room_bookings').delete().eq('id', deletingBooking.id)
     setDeleteLoading(false)
     if (error) {
       avisar('error', 'Não foi possível excluir: ' + error.message)
       return
     }
-    avisar('success', 'Reunião excluída.')
+    avisar(
+      avisoError ? 'error' : 'success',
+      avisoError
+        ? 'Reunião excluída, mas o aviso no WhatsApp não saiu.'
+        : 'Reunião excluída. Os participantes foram avisados.',
+    )
     setDeletingBooking(null)
     fetchDashboard()
     if (agendaRoom) fetchAgendaBookings(agendaRoom.id, agendaDate)

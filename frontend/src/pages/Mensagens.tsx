@@ -11,15 +11,28 @@ import { MessageSquare } from '@/components/icones'
 type Template = {
   id: string
   type: string
+  /** Versão específica de uma categoria de acesso; nulo é o texto genérico. */
+  category: string | null
   subject: string
   message: string
 }
+
+/**
+ * Chave de um template na tela. Entrada e saída podem ter uma versão por
+ * categoria (alimento, mercadoria) além da genérica, então o tipo sozinho
+ * não basta para identificá-los.
+ */
+const chaveTemplate = (t: Pick<Template, 'type' | 'category'>) =>
+  t.category ? `${t.type}:${t.category}` : t.type
 
 const VARIAVEIS: Record<string, string[]> = {
   entrada: ['nome_colaborador', 'nome_visitante', 'acao'],
   saida: ['nome_colaborador', 'nome_visitante', 'acao'],
   agendamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
   lembrete: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+  cancelamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+  'entrada:entregas_alimento': ['nome_colaborador', 'nome_visitante'],
+  'entrada:entregas_mercadoria': ['nome_colaborador', 'nome_visitante'],
 }
 
 const NOMES: Record<string, { titulo: string; quando: string }> = {
@@ -27,6 +40,9 @@ const NOMES: Record<string, { titulo: string; quando: string }> = {
   saida: { titulo: 'Saída de visitante', quando: 'Sai quando a recepção registra uma saída e marca o aviso.' },
   agendamento: { titulo: 'Nova reunião', quando: 'Sai para os participantes quando a reunião é agendada.' },
   lembrete: { titulo: 'Lembrete de reunião', quando: 'Sai para os participantes pouco antes do início.' },
+  cancelamento: { titulo: 'Reunião cancelada', quando: 'Sai para os participantes quando a reunião é excluída da agenda.' },
+  'entrada:entregas_alimento': { titulo: 'Chegada de alimento', quando: 'Sai quando a recepção registra uma entrada na categoria "Entrega de alimento".' },
+  'entrada:entregas_mercadoria': { titulo: 'Chegada de mercadoria', quando: 'Sai quando a recepção registra uma entrada na categoria "Entrega de mercadoria".' },
 }
 
 export function Mensagens() {
@@ -101,9 +117,10 @@ export function Mensagens() {
       ) : (
         <div className="space-y-4">
           {templates.map(template => {
-            const nome = NOMES[template.type]
+            const chave = chaveTemplate(template)
+            const nome = NOMES[chave] ?? NOMES[template.type]
             const alterado = salvos[template.id] !== template.message
-            const variaveis = VARIAVEIS[template.type] ?? []
+            const variaveis = VARIAVEIS[chave] ?? VARIAVEIS[template.type] ?? []
             return (
               <section key={template.id} className="folha p-5" aria-labelledby={`tpl-${template.id}`}>
                 <h2 id={`tpl-${template.id}`} className="text-[17px] font-semibold leading-[22px] tracking-[-.014em] text-[var(--color-text)]">
