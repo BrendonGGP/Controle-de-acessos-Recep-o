@@ -1,0 +1,382 @@
+{
+  "name": "Recepcao GGP - Lembrete de Avaliacao",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 13 * * *"
+            }
+          ]
+        }
+      },
+      "id": "agenda",
+      "name": "Toda Manha",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://afsjoaizrzmbbzquajbe.supabase.co/auth/v1/token?grant_type=password",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"email\": \"n8n.notificacoes@grupogomespires.com.br\", \"password\": \"__SUPABASE_SERVICE_PASSWORD__\"}"
+      },
+      "id": "login-supabase",
+      "name": "Login Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Quem recebeu o link ha mais de 24h e ainda nao recebeu lembrete.\n// So o limite superior: nao ha piso porque a busca ja exclui quem ja tem\n// lembrete, e uma visita antiga que escapou (fluxo fora do ar, por exemplo)\n// deve receber assim que der, nao ficar orfa para sempre.\nconst limite = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();\nreturn [{ json: { limite } }];\n"
+      },
+      "id": "janela",
+      "name": "Janela de 24h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/access_logs?select=id,visitor_name,phone,avaliacao_enviada_em&avaliacao_enviada_em=not.is.null&avaliacao_lembrete_em=is.null&avaliacao_enviada_em=lt.' + $json.limite }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-pendentes",
+      "name": "Buscar Pendentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message&type=eq.avaliacao&category=eq.lembrete' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-template",
+      "name": "Buscar Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/app_settings?select=value&key=eq.link_avaliacao' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-link",
+      "name": "Buscar Link",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\nconst pendentes = $('Buscar Pendentes').all().map(i => i.json).filter(r => r && r.id);\n// Manha sem ninguem a lembrar e o caso comum, nao um erro: sai quieto.\nif (!pendentes.length) { return []; }\n\nconst linkRow = $('Buscar Link').all().map(i => i.json).find(r => r && r.value);\nconst link = linkRow?.value;\nif (!link) { return []; }\n\nconst tplRow = $('Buscar Template').all().map(i => i.json).find(r => r && r.message);\nconst tpl = tplRow?.message\n  || 'Ola *{{nome_visitante}}*! \\u{1f44b}\\n\\nPassando para lembrar da avaliacao sobre sua visita ao *Grupo Gomes Pires*:\\n\\n{{link}}\\n\\n_Se voce ja respondeu, desconsidere._';\n\n// Sem telefone valido nao ha lembrete a enviar, mas a visita precisa ser\n// marcada assim mesmo: deixada em aberto, ela voltaria nesta busca amanha\n// e em todas as outras manhas, para sempre. O Quem Marcar le esta lista.\nconst semFone = [];\nconst out = [];\n\nfor (const v of pendentes) {\n  const fone = normalizePhone(v.phone);\n  if (!fone) {\n    semFone.push(v.id);\n    continue;\n  }\n  out.push({ json: {\n    id: v.id,\n    number: fone,\n    text: render(tpl, { nome_visitante: v.visitor_name, link }),\n    semFone,\n  }});\n}\n\n// Todos sem telefone: nao ha envio, mas ha o que marcar. Um item so,\n// porque lista vazia travaria o fluxo antes do Quem Marcar.\nif (out.length === 0) {\n  return [{ json: { soMarcar: true, semFone } }];\n}\nreturn out;\n"
+      },
+      "id": "montar-lembretes",
+      "name": "Montar Lembretes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://evolution-evolution-api.u9tmmg.easypanel.host/message/sendText/RecepcaoGGP",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__EVOLUTION_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}"
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        300
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Cruza por indice: o no de envio devolve um item por mensagem, na mesma\n// ordem em que entraram, mas com o json trocado pela resposta da Evolution.\n// Sem o cruzamento nao haveria como saber qual visita cada resposta e.\nconst origem = $('Montar Lembretes').all().map(i => i.json);\nconst respostas = $input.all().map(i => i.json);\n\nconst out = [];\n\n// Quem ficou sem telefone valido: marcado sem envio, senao a visita volta\n// nesta busca todas as manhas. A lista viaja em qualquer item da origem.\nfor (const id of (origem[0]?.semFone || [])) {\n  out.push({ json: { id } });\n}\n\n// Ninguem com telefone: o no de envio nao mandou nada, e so o que esta\n// acima precisa ser marcado.\nif (origem.length === 1 && origem[0].soMarcar) {\n  return out;\n}\n\nfor (let i = 0; i < origem.length; i++) {\n  // So marca quem a Evolution confirmou (devolve key.id). Quem falhou fica\n  // em aberto e entra na proxima manha — uma segunda chance, nao um envio\n  // perdido em silencio.\n  if (respostas[i]?.key?.id) {\n    out.push({ json: { id: origem[i].id } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "quem-marcar",
+      "name": "Quem Marcar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/access_logs?id=eq.' + $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ avaliacao_lembrete_em: new Date().toISOString() }) }}"
+      },
+      "id": "marcar-lembrete",
+      "name": "Marcar Lembrete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Toda Manha": {
+      "main": [
+        [
+          {
+            "node": "Login Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login Supabase": {
+      "main": [
+        [
+          {
+            "node": "Janela de 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Janela de 24h": {
+      "main": [
+        [
+          {
+            "node": "Buscar Pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Pendentes": {
+      "main": [
+        [
+          {
+            "node": "Buscar Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Template": {
+      "main": [
+        [
+          {
+            "node": "Buscar Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Link": {
+      "main": [
+        [
+          {
+            "node": "Montar Lembretes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Lembretes": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Quem Marcar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quem Marcar": {
+      "main": [
+        [
+          {
+            "node": "Marcar Lembrete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
