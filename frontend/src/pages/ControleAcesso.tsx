@@ -37,6 +37,7 @@ type Presente = {
 
 const CATEGORIAS = [
   { value: 'visitas_reunioes', label: 'Visita ou reunião' },
+  { value: 'atendimento', label: 'Atendimento' },
   { value: 'prestadores_servico', label: 'Prestador de serviço' },
   { value: 'entregas_mercadoria', label: 'Entrega de mercadoria' },
   { value: 'entregas_alimento', label: 'Entrega de alimento' },
@@ -44,6 +45,13 @@ const CATEGORIAS = [
   { value: 'stands', label: 'Stand' },
   { value: 'treinamentos_onboarding', label: 'Treinamento' },
 ]
+
+/**
+ * Categorias que recebem o link de avaliação na saída. Espelha a função
+ * `avaliacao_elegivel` no banco, que é quem manda — aqui serve para a tela
+ * não chamar o envio à toa quando o visitante não se qualifica.
+ */
+const CATEGORIAS_AVALIADAS = ['visitas_reunioes', 'atendimento']
 
 const nomeCategoria = (cat: string) =>
   CATEGORIAS.find(c => c.value === cat)?.label
@@ -125,6 +133,23 @@ export function ControleAcesso() {
       avisar('error', 'Não foi possível registrar a saída: ' + error.message)
       return
     }
+
+    // O link de avaliação sai agora, com a visita fresca na memória de quem
+    // ainda está no estacionamento. Só para quem veio por visita/reunião ou
+    // atendimento: pesquisa de satisfação para entregador soaria deslocada.
+    // Se o envio falhar, a saída continua registrada — é o que importa.
+    if (CATEGORIAS_AVALIADAS.includes(entrada.category)) {
+      const { error: avaliacaoError } = await supabase.functions.invoke('notify-avaliacao', {
+        body: { entrada_id: entrada.id },
+      })
+      if (avaliacaoError) {
+        console.error('Saída registrada, mas o link de avaliação não saiu: ' + avaliacaoError.message)
+        avisar('error', `Saída de ${entrada.visitor_name} registrada, mas o link de avaliação não saiu.`)
+        fetchInitialData()
+        return
+      }
+    }
+
     avisar('success', `Saída de ${entrada.visitor_name} registrada.`)
     fetchInitialData()
   }

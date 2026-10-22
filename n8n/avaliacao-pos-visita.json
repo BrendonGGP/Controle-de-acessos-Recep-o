@@ -1,0 +1,405 @@
+{
+  "name": "Recepcao GGP - Avaliacao Pos-Visita",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recepcao/avaliacao",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "recepcao-avaliacao"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst esperado = \"__WEBHOOK_TOKEN__\";\nconst recebido = $input.first().json.headers?.['x-webhook-token'];\nif (recebido !== esperado) {\n  throw new Error('Token invalido');\n}\nreturn $input.all();\n"
+      },
+      "id": "validar-token",
+      "name": "Validar Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://afsjoaizrzmbbzquajbe.supabase.co/auth/v1/token?grant_type=password",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"email\": \"n8n.notificacoes@grupogomespires.com.br\", \"password\": \"__SUPABASE_SERVICE_PASSWORD__\"}"
+      },
+      "id": "login-supabase",
+      "name": "Login Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/access_logs?select=id,visitor_name,phone,category,avaliacao_enviada_em&id=eq.' + $('Webhook').first().json.body.entrada_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-visita",
+      "name": "Buscar Visita",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message&type=eq.avaliacao&category=is.null' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-template",
+      "name": "Buscar Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/app_settings?select=value&key=eq.link_avaliacao' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "buscar-link",
+      "name": "Buscar Link",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\n// Devolver lista vazia travaria o fluxo: o n8n nao roda os nos seguintes,\n// o webhook responderia vazio e a Edge Function leria como erro. O marcador\n// segue ate o Resumo, que o traduz numa resposta honesta.\nfunction semEnvio(motivo) {\n  return [{ json: { semDestinatario: true, motivo } }];\n}\n\nconst visitas = $('Buscar Visita').all().map(i => i.json).filter(r => r && r.id);\nconst visita = visitas[0];\nif (!visita) { return semEnvio('Visita nao encontrada'); }\n\n// So visita/reuniao e atendimento recebem avaliacao. A tela ja filtra, mas\n// o webhook e publico atras do token: a regra tambem vale aqui.\nconst ELEGIVEIS = ['visitas_reunioes', 'atendimento'];\nif (!ELEGIVEIS.includes(visita.category)) {\n  return semEnvio('Categoria nao recebe avaliacao: ' + visita.category);\n}\n\n// Reenvio do mesmo link por uma segunda baixa seria insistencia.\nif (visita.avaliacao_enviada_em) {\n  return semEnvio('Avaliacao ja enviada em ' + visita.avaliacao_enviada_em);\n}\n\nconst fone = normalizePhone(visita.phone);\nif (!fone) { return semEnvio('Visitante sem telefone valido'); }\n\nconst linkRow = $('Buscar Link').all().map(i => i.json).find(r => r && r.value);\nconst link = linkRow?.value;\nif (!link) { return semEnvio('Link de avaliacao nao configurado'); }\n\nconst tplRow = $('Buscar Template').all().map(i => i.json).find(r => r && r.message);\nconst tpl = tplRow?.message\n  || 'Ola *{{nome_visitante}}*! \\u{1f44b}\\n\\nObrigado pela sua visita ao *Grupo Gomes Pires*.\\n\\nSua opiniao nos ajuda a melhorar:\\n\\n{{link}}';\n\nreturn [{ json: {\n  number: fone,\n  text: render(tpl, { nome_visitante: visita.visitor_name, link }),\n}}];\n"
+      },
+      "id": "montar-avaliacao",
+      "name": "Montar Avaliacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://evolution-evolution-api.u9tmmg.easypanel.host/message/sendText/RecepcaoGGP",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__EVOLUTION_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}"
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Le o marcador na origem, nao no no de envio: o HTTP substitui o json do\n// item pela resposta da Evolution, entao o semDestinatario nao sobrevive\n// ate aqui. Foi assim que o \"aviso nao saiu\" falso apareceu antes.\nconst origem = $('Montar Avaliacao').all();\nconst semNinguem = origem.length === 1 && origem[0].json.semDestinatario;\n\nif (semNinguem) {\n  // `marcar: false` impede o PATCH adiante de registrar como avaliada uma\n  // visita que nunca recebeu nada — e o item segue, em vez de uma lista\n  // vazia que travaria o fluxo e deixaria o webhook sem resposta.\n  return [{ json: { success: true, enviado: false, marcar: false, motivo: origem[0].json.motivo } }];\n}\n\n// A Evolution devolve key.id quando aceitou a mensagem. Sem ele, o envio\n// falhou — e dizer que saiu seria mentir para a recepcao.\nconst resposta = $input.first().json;\nconst aceitou = Boolean(resposta?.key?.id);\n\nreturn [{ json: {\n  success: aceitou,\n  enviado: aceitou,\n  marcar: aceitou,\n  ...(aceitou ? {} : { motivo: 'Evolution nao confirmou o envio' }),\n} }];\n"
+      },
+      "id": "resumo",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/access_logs?id=eq.' + $('Webhook').first().json.body.entrada_id + ($json.marcar ? '' : '&id=is.null') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_publishable_dmxqufD4FuZgESEXKBrbaA_Utuza9J3"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Login Supabase').first().json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ avaliacao_enviada_em: new Date().toISOString() }) }}"
+      },
+      "id": "marcar-enviado",
+      "name": "Marcar Enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// O no anterior e o PATCH, cuja resposta nao interessa. Quem tem o\n// veredito e o Resumo — e o webhook responde o ultimo no, que e este.\nconst r = $('Resumo').first().json;\nreturn [{ json: {\n  success: r.success,\n  enviado: r.enviado,\n  ...(r.motivo ? { motivo: r.motivo } : {}),\n} }];\n"
+      },
+      "id": "responder",
+      "name": "Responder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Token": {
+      "main": [
+        [
+          {
+            "node": "Login Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login Supabase": {
+      "main": [
+        [
+          {
+            "node": "Buscar Visita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Visita": {
+      "main": [
+        [
+          {
+            "node": "Buscar Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Template": {
+      "main": [
+        [
+          {
+            "node": "Buscar Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Link": {
+      "main": [
+        [
+          {
+            "node": "Montar Avaliacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Avaliacao": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo": {
+      "main": [
+        [
+          {
+            "node": "Marcar Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Enviado": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
