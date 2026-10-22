@@ -33,10 +33,17 @@ serve(async (req: Request) => {
       throw new Error('booking_id é obrigatório.')
     }
 
-    // 'agendamento' (padrão) avisa que a reunião foi marcada; 'cancelamento'
-    // avisa que ela caiu. O fluxo é o mesmo — buscar participantes e enviar —,
-    // só muda o template que o n8n escolhe.
-    const evento = payload.evento === 'cancelamento' ? 'cancelamento' : 'agendamento'
+    // 'agendamento' (padrão) avisa que a reunião foi marcada, 'cancelamento'
+    // que ela caiu, 'atualizacao' que mudou de data, horário ou sala. O fluxo
+    // é o mesmo — buscar participantes e enviar —, só muda o template que o
+    // n8n escolhe.
+    const EVENTOS = ['agendamento', 'cancelamento', 'atualizacao']
+    const evento = EVENTOS.includes(payload.evento) ? payload.evento : 'agendamento'
+
+    // Na atualização, a reserva no banco já é a nova: comparar antes e depois
+    // só é possível com os valores antigos, que a tela lê antes de salvar e
+    // manda aqui. Repassados como vieram — o n8n decide o que exibir.
+    const anterior = evento === 'atualizacao' ? payload.anterior ?? null : null
 
     const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
     const webhookToken = Deno.env.get('N8N_WEBHOOK_TOKEN')
@@ -55,7 +62,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
         ...(webhookToken ? { 'x-webhook-token': webhookToken } : {}),
       },
-      body: JSON.stringify({ booking_id: bookingId, evento }),
+      body: JSON.stringify({ booking_id: bookingId, evento, anterior }),
     })
 
     const corpo = await response.text()
