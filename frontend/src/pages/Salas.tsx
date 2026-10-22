@@ -50,6 +50,22 @@ const OPCOES_DURACAO = [
 
 const BOOKING_FIELDS = 'id, room_id, title, booking_date, start_time, end_time, service, responsavel_id, rooms(name), booking_participants(collaborator_id)'
 
+/** Data, horário e sala de uma reserva — o que o aviso de alteração compara. */
+type OndeImporta = { data: string; horario: string; sala: string }
+
+/**
+ * A edição mexe em data, horário, sala, título, café e participantes, mas
+ * só os três primeiros tiram alguém do compromisso: mandam a pessoa para
+ * a porta errada ou na hora errada. Corrigir um título não justifica um
+ * WhatsApp para a reunião inteira — e aviso que chega por qualquer edição
+ * vira ruído, até ser ignorado quando importa.
+ */
+function mudouOndeImporta(antes: OndeImporta, depois: OndeImporta) {
+  return antes.data !== depois.data
+    || antes.horario !== depois.horario
+    || antes.sala !== depois.sala
+}
+
 // Régua do dia no cartão da sala: das 7h às 21h, o expediente da recepção.
 /** Alcance do painel "Próximas reuniões", em dias a partir de hoje. */
 const DIAS_FUTURAS = 30
@@ -353,8 +369,34 @@ export function Salas() {
       }
 
       let currentBookingId = editingBookingId
+      // O update sobrescreve a reserva, então o "antes" tem que ser lido
+      // agora: sem ele não há como a mensagem dizer o que mudou.
+      let anterior: OndeImporta | null = null
+      let avisoFalhou = false
+      const novo: OndeImporta = {
+        data: date,
+        horario: `${startTime} as ${minutesToTime(timeToMinutes(startTime) + durationMinutes)}`,
+        sala: salaEscolhida?.name ?? '',
+      }
 
       if (editingBookingId) {
+        // Busca por id, e não na consulta de conflito acima: aquela filtra
+        // pela sala nova, e numa troca de sala a reserva antiga não estaria
+        // ali. Um erro aqui não impede a edição — só custa o aviso.
+        const { data: antes } = await supabase
+          .from('room_bookings')
+          .select('booking_date, start_time, end_time, rooms(name)')
+          .eq('id', editingBookingId)
+          .single()
+
+        if (antes) {
+          anterior = {
+            data: antes.booking_date,
+            horario: `${antes.start_time.substring(0, 5)} as ${antes.end_time.substring(0, 5)}`,
+            sala: (antes.rooms as unknown as { name: string } | null)?.name ?? '',
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('room_bookings')
           .update({
@@ -403,12 +445,33 @@ export function Salas() {
           })
           if (invokeError) {
             console.error('Reunião criada, mas erro ao notificar WhatsApp: ' + invokeError.message)
-            avisar('error', 'Reunião agendada, mas o aviso no WhatsApp não saiu.')
+            avisoFalhou = true
+          }
+        } else if (anterior && mudouOndeImporta(anterior, novo)) {
+          // Só avisa quando a mudança faz alguém ir ao lugar errado na hora
+          // errada. Corrigir o título ou acionar a copa não tira ninguém do
+          // compromisso — e aviso que chega por qualquer edição vira ruído,
+          // até ser ignorado quando importa.
+          const { error: invokeError } = await supabase.functions.invoke('notify-booking', {
+            body: { booking_id: currentBookingId, evento: 'atualizacao', anterior },
+          })
+          if (invokeError) {
+            console.error('Reunião atualizada, mas erro ao notificar WhatsApp: ' + invokeError.message)
+            avisoFalhou = true
           }
         }
       }
 
-      avisar('success', editingBookingId ? 'Reunião atualizada.' : 'Reunião agendada.')
+      // A reserva foi salva de todo jeito: o que falhou foi só o WhatsApp.
+      // Um toast só, dizendo as duas coisas, em vez de um verde e um
+      // vermelho disputando a atenção da recepcionista.
+      if (avisoFalhou) {
+        avisar('error', editingBookingId
+          ? 'Reunião atualizada, mas o aviso no WhatsApp não saiu.'
+          : 'Reunião agendada, mas o aviso no WhatsApp não saiu.')
+      } else {
+        avisar('success', editingBookingId ? 'Reunião atualizada.' : 'Reunião agendada.')
+      }
       setIsModalOpen(false)
       resetForm()
       fetchDashboard()
