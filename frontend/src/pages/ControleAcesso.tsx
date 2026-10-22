@@ -14,7 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Modal, RodapeModal } from '@/components/ui/modal'
 import { CabecalhoPagina } from '@/components/CabecalhoPagina'
 import { AvisoErro, EstadoErro, EstadoVazio, Skeleton } from '@/components/Estados'
-import { DoorOpen, LogIn, LogOut, Plus, Whatsapp } from '@/components/icones'
+import { DoorOpen, Download, LogIn, LogOut, Plus, Whatsapp } from '@/components/icones'
+import { exportarRelatorioPDF, type LinhaRelatorio } from '@/lib/relatorio'
 
 type Collaborator = { id: string; name: string }
 type AccessLog = {
@@ -52,6 +53,33 @@ const CATEGORIAS = [
  * não chamar o envio à toa quando o visitante não se qualifica.
  */
 const CATEGORIAS_AVALIADAS = ['visitas_reunioes', 'atendimento']
+
+/** Uma visita anterior da mesma pessoa, para reaproveitar o cadastro. */
+type CadastroAnterior = {
+  visitor_name: string
+  document: string
+  phone: string | null
+  ultima_visita: string
+}
+
+/**
+ * Quantos caracteres antes de procurar. Com um só, a busca traria meio
+ * banco e atrapalharia quem está só digitando um nome novo.
+ */
+const MINIMO_PARA_BUSCAR = 2
+
+/** Primeiro dia do mês corrente — o período que o relatório abre sugerindo. */
+function primeiroDoMes() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+/** "14/10/2026" a partir do timestamp da última visita. */
+function diaDaVisita(iso: string) {
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+}
 
 const nomeCategoria = (cat: string) =>
   CATEGORIAS.find(c => c.value === cat)?.label
@@ -95,9 +123,100 @@ export function ControleAcesso() {
   const [buscaPresente, setBuscaPresente] = useState('')
   const [baixaId, setBaixaId] = useState<string | null>(null)
 
+  // Relatório: período e filtro escolhidos antes de gerar o PDF.
+  const [relatorioAberto, setRelatorioAberto] = useState(false)
+  const [relInicio, setRelInicio] = useState(primeiroDoMes())
+  const [relFim, setRelFim] = useState(hojeLocal())
+  const [relCategoria, setRelCategoria] = useState('')
+  const [relGerando, setRelGerando] = useState(false)
+  const [relErro, setRelErro] = useState<string | null>(null)
+
+  // Cadastro anterior: quem já visitou aparece enquanto a recepção digita,
+  // para não precisar pedir o documento de novo.
+  const [sugestoes, setSugestoes] = useState<CadastroAnterior[]>([])
+  const [buscandoCadastro, setBuscandoCadastro] = useState(false)
+  // Depois de escolher uma sugestão, a lista some até a recepção digitar de
+  // novo — senão ela reabriria por cima do formulário já preenchido.
+  const [sugestoesVisiveis, setSugestoesVisiveis] = useState(false)
+
   useEffect(() => {
     fetchInitialData()
   }, [])
+
+  // Busca o cadastro anterior enquanto a recepção digita, com 300ms de
+  // espera: sem isso sairia uma consulta por tecla.
+  useEffect(() => {
+    const termo = visitorName.trim()
+    // Termo curto demais não busca. A lista some sozinha na renderização
+    // (ver `sugestoesVisiveis` abaixo), sem precisar de um setState aqui.
+    if (!sugestoesVisiveis || termo.length < MINIMO_PARA_BUSCAR) return
+
+    let cancelado = false
+    const timer = setTimeout(async () => {
+      setBuscandoCadastro(true)
+      const { data } = await supabase.rpc('buscar_cadastro_anterior', { p_termo: termo })
+      // Uma resposta lenta de um termo já apagado não pode sobrescrever a
+      // lista do termo atual.
+      if (cancelado) return
+      setSugestoes((data ?? []) as CadastroAnterior[])
+      setBuscandoCadastro(false)
+    }, 300)
+
+    return () => { cancelado = true; clearTimeout(timer) }
+  }, [visitorName, sugestoesVisiveis])
+
+  /** Preenche o formulário com os dados da visita anterior. */
+  function usarCadastro(c: CadastroAnterior) {
+    setVisitorName(c.visitor_name.trim())
+    setDocument(c.document)
+    if (c.phone) setPhone(formatPhone(c.phone.replace(/^55/, '')))
+    setSugestoes([])
+    setSugestoesVisiveis(false)
+  }
+
+  function abrirRelatorio() {
+    setRelErro(null)
+    setRelInicio(primeiroDoMes())
+    setRelFim(hojeLocal())
+    setRelCategoria('')
+    setRelatorioAberto(true)
+  }
+
+  async function gerarRelatorio() {
+    if (relInicio > relFim) {
+      setRelErro('A data inicial não pode ser depois da final.')
+      return
+    }
+
+    setRelGerando(true)
+    setRelErro(null)
+
+    const { data, error } = await supabase.rpc('relatorio_acessos', {
+      p_inicio: relInicio,
+      p_fim: relFim,
+      p_categoria: relCategoria || null,
+    })
+
+    setRelGerando(false)
+
+    if (error) {
+      setRelErro('Não foi possível montar o relatório: ' + error.message)
+      return
+    }
+
+    try {
+      exportarRelatorioPDF((data ?? []) as LinhaRelatorio[], {
+        inicio: relInicio,
+        fim: relFim,
+        categoria: relCategoria || null,
+      })
+      setRelatorioAberto(false)
+    } catch (err: any) {
+      // Pop-up bloqueado é o caso comum aqui, e a mensagem explica o que
+      // fazer — fechar o modal esconderia a instrução.
+      setRelErro(err.message || 'Não foi possível abrir a janela de impressão.')
+    }
+  }
 
   async function fetchInitialData() {
     setErroCarga(null)
@@ -235,6 +354,8 @@ export function ControleAcesso() {
     setNotify(false)
     setCollaboratorId('')
     setError(null)
+    setSugestoes([])
+    setSugestoesVisiveis(false)
   }
 
   const entradasHoje = logs.filter(l => l.action === 'entrada' && hojeLocal(new Date(l.created_at)) === hojeLocal()).length
@@ -246,9 +367,14 @@ export function ControleAcesso() {
         titulo="Controle de acesso"
         descricao="Entradas e saídas de visitantes e prestadores."
         acoes={
-          <Button onClick={() => { resetForm(); setIsModalOpen(true) }}>
-            <Plus /> Registrar acesso
-          </Button>
+          <>
+            <Button variant="secondary" onClick={abrirRelatorio}>
+              <Download /> Exportar
+            </Button>
+            <Button onClick={() => { resetForm(); setIsModalOpen(true) }}>
+              <Plus /> Registrar acesso
+            </Button>
+          </>
         }
       />
 
@@ -354,7 +480,50 @@ export function ControleAcesso() {
           <>
           <div className="space-y-1.5">
             <Label htmlFor="visitorName">Nome do visitante</Label>
-            <Input id="visitorName" value={visitorName} onChange={e => setVisitorName(formatName(e.target.value))} required placeholder="Nome completo" autoComplete="off" />
+            <div className="relative">
+              <Input
+                id="visitorName"
+                value={visitorName}
+                onChange={e => { setVisitorName(formatName(e.target.value)); setSugestoesVisiveis(true) }}
+                required
+                placeholder="Nome ou documento de quem já visitou"
+                autoComplete="off"
+                aria-describedby="dica-cadastro"
+              />
+              {/*
+                Visitas anteriores da mesma pessoa. Escolher uma preenche
+                documento e telefone — a recepção não precisa pedir o
+                documento de novo a quem já esteve aqui.
+              */}
+              {sugestoesVisiveis && visitorName.trim().length >= MINIMO_PARA_BUSCAR && sugestoes.length > 0 && (
+                <ul
+                  className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-[14px] border border-[var(--color-borda)] bg-[var(--color-surface)] p-1.5 shadow-lg"
+                  aria-label="Visitas anteriores"
+                >
+                  {sugestoes.map(c => (
+                    <li key={c.document}>
+                      <button
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); usarCadastro(c) }}
+                        className="w-full rounded-[10px] px-3 py-2 text-left transition-colors hover:bg-[var(--color-preenchimento)]"
+                      >
+                        <span className="block truncate text-sm text-[var(--color-text)]">
+                          {c.visitor_name.trim()}
+                        </span>
+                        <span className="block truncate text-[12px] text-[var(--color-text-secondary)]">
+                          {c.document} · esteve aqui em {diaDaVisita(c.ultima_visita)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p id="dica-cadastro" className="text-[12px] text-[var(--color-text-secondary)]">
+              {buscandoCadastro
+                ? 'Procurando visitas anteriores…'
+                : 'Quem já visitou nos últimos 12 meses aparece aqui, com documento e telefone.'}
+            </p>
           </div>
 
           <Select label="Categoria" value={category} onChange={setCategory} options={CATEGORIAS} />
@@ -412,6 +581,51 @@ export function ControleAcesso() {
             )}
           </RodapeModal>
         </form>
+      </Modal>
+
+      <Modal
+        aberto={relatorioAberto}
+        aoFechar={() => setRelatorioAberto(false)}
+        titulo="Exportar relatório"
+        descricao="Escolha o período e gere o PDF."
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="relInicio">De</Label>
+              <Input id="relInicio" type="date" value={relInicio} onChange={e => setRelInicio(e.target.value)} max={hojeLocal()} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="relFim">Até</Label>
+              <Input id="relFim" type="date" value={relFim} onChange={e => setRelFim(e.target.value)} max={hojeLocal()} />
+            </div>
+          </div>
+
+          <Select
+            label="Categoria"
+            value={relCategoria}
+            onChange={setRelCategoria}
+            options={[{ value: '', label: 'Todas as categorias' }, ...CATEGORIAS]}
+          />
+
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            O relatório abre numa aba nova. Para salvar o arquivo, escolha
+            <strong className="text-[var(--color-text)]"> Salvar como PDF</strong> no destino da impressão.
+          </p>
+
+          {relErro && <AvisoErro>{relErro}</AvisoErro>}
+
+          <RodapeModal>
+            <Button type="button" variant="secondary" onClick={() => setRelatorioAberto(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={gerarRelatorio} disabled={relGerando} className="min-w-32">
+              {relGerando
+                ? <span className="pontos-pulando" aria-label="Gerando"><i /><i /><i /></span>
+                : <><Download size={16} /> Gerar PDF</>}
+            </Button>
+          </RodapeModal>
+        </div>
       </Modal>
     </div>
   )
