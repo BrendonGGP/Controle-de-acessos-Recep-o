@@ -25,6 +25,7 @@ import {
   Coffee02Icon,
   Delete02Icon,
   DoorIcon,
+  Download04Icon,
   IdIcon,
   InformationCircleIcon,
   Login03Icon,
@@ -98,6 +99,7 @@ export const Trash2 = icone(Delete02Icon, 'Trash2')
 export const Pencil = icone(PencilEdit02Icon, 'Pencil')
 export const RefreshCw = icone(RefreshIcon, 'RefreshCw')
 export const Search = icone(Search01Icon, 'Search')
+export const Download = icone(Download04Icon, 'Download')
 export const Eye = icone(ViewIcon, 'Eye')
 export const EyeOff = icone(ViewOffIcon, 'EyeOff')
 export const UserPlus = icone(UserAdd01Icon, 'UserPlus')
