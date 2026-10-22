@@ -70,7 +70,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/room_bookings?select=id,title,booking_date,start_time,end_time,rooms(name),booking_participants(collaborators(name,phone))&id=eq.' + $('Webhook').first().json.body.booking_id }}",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/room_bookings?select=id,title,booking_date,start_time,end_time,service,responsavel_id,rooms(name),booking_participants(collaborators(id,name,phone))&id=eq.' + $('Webhook').first().json.body.booking_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -103,7 +103,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message&category=is.null&type=eq.' + ($('Webhook').first().json.body.evento === 'cancelamento' ? 'cancelamento' : 'agendamento') }}",
+        "url": "={{ 'https://afsjoaizrzmbbzquajbe.supabase.co/rest/v1/message_templates?select=message&or=(category.is.null,category.eq.responsavel)&type=eq.' + ($('Webhook').first().json.body.evento === 'cancelamento' ? 'cancelamento' : 'agendamento') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -135,7 +135,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\nconst rows = $('Buscar Reserva').all().map(i => i.json).filter(r => r && r.id);\nconst booking = rows[0];\nif (!booking) { return [{ json: { erro: 'Reserva nao encontrada', enviar: [] } }]; }\n\nconst tplRow = $('Buscar Template').all().map(i => i.json).find(r => r && r.message);\nconst ehCancelamento = $('Webhook').first().json.body.evento === 'cancelamento';\nconst tplCancelamento = \"Ola *{{nome_colaborador}}*! \\u274c\\n\\nA reuniao abaixo foi *cancelada*:\\n\\n*Assunto:* {{titulo}}\\n*Sala:* {{sala}}\\n*Data:* {{data}}\\n*Horario:* {{horario}}\\n\\n_Mensagem automatica da Portaria Inteligente._\";\nconst tpl = tplRow?.message || (ehCancelamento ? tplCancelamento : 'Ola *{{nome_colaborador}}*! 📅\\n\\nVoce foi convidado(a) para uma reuniao:\\n\\n*Assunto:* {{titulo}}\\n*Sala:* {{sala}}\\n*Data:* {{data}}\\n*Horario:* {{horario}}');\n\nconst sala = booking.rooms?.name || 'Sala';\nconst data = String(booking.booking_date).split('-').reverse().join('/');\nconst horario = String(booking.start_time).substring(0,5) + ' as ' + String(booking.end_time).substring(0,5);\n\nconst out = [];\nfor (const p of (booking.booking_participants || [])) {\n  const c = p.collaborators;\n  if (!c) continue;\n  const fone = normalizePhone(c.phone);\n  if (!fone) continue;\n  out.push({ json: {\n    number: fone,\n    text: render(tpl, {\n      nome_colaborador: c.name,\n      titulo: booking.title,\n      sala, data, horario,\n    }),\n  }});\n}\nreturn out;\n"
+        "jsCode": "\nfunction render(tpl, vars) {\n  return String(tpl || '').replace(/\\{\\{\\s*(\\w+)\\s*\\}\\}/g, (m, k) =>\n    k in vars ? String(vars[k]) : m\n  );\n}\nfunction normalizePhone(v) {\n  let d = String(v || '').replace(/\\D/g, '');\n  if (d.length === 12 || d.length === 13) {\n    if (!d.startsWith('55')) return null;\n    d = d.substring(2);\n  }\n  if (d.length !== 10 && d.length !== 11) return null;\n  if (parseInt(d.substring(0, 2), 10) < 11) return null;\n  if (d.length === 11 && d[2] !== '9') return null;\n  return '55' + d;\n}\n\nconst rows = $('Buscar Reserva').all().map(i => i.json).filter(r => r && r.id);\nconst booking = rows[0];\nif (!booking) { return [{ json: { semDestinatario: true, motivo: 'Reserva nao encontrada' } }]; }\n\nconst todosTpl = $('Buscar Template').all().map(i => i.json).filter(r => r && r.message);\nconst tplRow = todosTpl.find(r => !r.category) || todosTpl[0];\n// Quem pediu a sala recebe um texto que reconhece o papel dele.\nconst tplResponsavel = todosTpl.find(r => r.category === 'responsavel');\nconst ehCancelamento = $('Webhook').first().json.body.evento === 'cancelamento';\nconst tplCancelamento = \"Ola *{{nome_colaborador}}*! \\u274c\\n\\nA reuniao abaixo foi *cancelada*:\\n\\n*Assunto:* {{titulo}}\\n*Sala:* {{sala}}\\n*Data:* {{data}}\\n*Horario:* {{horario}}\\n\\n_Mensagem automatica da Portaria Inteligente._\";\nconst tpl = tplRow?.message || (ehCancelamento ? tplCancelamento : 'Ola *{{nome_colaborador}}*! 📅\\n\\nVoce foi convidado(a) para uma reuniao:\\n\\n*Assunto:* {{titulo}}\\n*Sala:* {{sala}}\\n*Data:* {{data}}\\n*Horario:* {{horario}}');\n\nconst sala = booking.rooms?.name || 'Sala';\nconst data = String(booking.booking_date).split('-').reverse().join('/');\nconst horario = String(booking.start_time).substring(0,5) + ' as ' + String(booking.end_time).substring(0,5);\n// Linha do cafe: entra so quando a copa foi acionada. Vazia, a\n// variavel {{cafe}} some do texto sem deixar buraco.\nconst cafe = booking.service === 'com_cafe' ? \"\\n\\u2615 Servico de cafe solicitado.\" : '';\n\nconst out = [];\nfor (const p of (booking.booking_participants || [])) {\n  const c = p.collaborators;\n  if (!c) continue;\n  const fone = normalizePhone(c.phone);\n  if (!fone) continue;\n  out.push({ json: {\n    number: fone,\n    text: render(\n      (ehCancelamento && tplResponsavel && c.id === booking.responsavel_id)\n        ? tplResponsavel.message\n        : tpl,\n      {\n      nome_colaborador: c.name,\n      titulo: booking.title,\n      sala, data, horario,\n      cafe,\n    }),\n  }});\n}\n// Reuniao sem participantes (ou sem telefone valido) nao e falha:\n// nao ha a quem avisar. Devolver lista vazia travaria o fluxo — o n8n\n// nao roda os nos seguintes — e o webhook responderia vazio, que a\n// Edge Function leria como erro.\nif (out.length === 0) {\n  return [{ json: { semDestinatario: true, motivo: 'Nenhum participante com telefone' } }];\n}\nreturn out;\n"
       },
       "id": "montar-mensagens",
       "name": "Montar Mensagens",
@@ -168,7 +168,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}"
+        "jsonBody": "={{ $json.semDestinatario ? '{}' : JSON.stringify({ number: $json.number, text: $json.text }) }}"
       },
       "id": "enviar-whatsapp",
       "name": "Enviar WhatsApp",
@@ -185,7 +185,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst itens = $input.all();\nconst ok = itens.filter(i => !i.json.error).length;\nreturn [{ json: { success: true, enviados: ok, total: itens.length } }];\n"
+        "jsCode": "// Uma reuniao sem participantes nao e falha: nao ha a quem avisar.\n// O marcador vem de Montar Mensagens porque o no de envio\n// substitui o json pelo resultado (ou erro) da Evolution.\nconst origem = $('Montar Mensagens').all();\nconst semNinguem = origem.length === 1 && origem[0].json.semDestinatario;\nif (semNinguem) {\n  return [{ json: { success: true, enviados: 0, total: 0, motivo: origem[0].json.motivo } }];\n}\nconst itens = $input.all();\nconst ok = itens.filter(i => !i.json.error).length;\nreturn [{ json: { success: true, enviados: ok, total: itens.length } }];\n"
       },
       "id": "resumo",
       "name": "Resumo",
