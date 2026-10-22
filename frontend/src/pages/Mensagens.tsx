@@ -28,10 +28,17 @@ const chaveTemplate = (t: Pick<Template, 'type' | 'category'>) =>
 const VARIAVEIS: Record<string, string[]> = {
   entrada: ['nome_colaborador', 'nome_visitante', 'acao'],
   saida: ['nome_colaborador', 'nome_visitante', 'acao'],
-  agendamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
-  lembrete: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+  agendamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario', 'cafe'],
+  lembrete: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario', 'cafe'],
   cancelamento: ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
+  'cancelamento:responsavel': ['nome_colaborador', 'titulo', 'sala', 'data', 'horario'],
   'entrada:entregas_alimento': ['nome_colaborador', 'nome_visitante'],
+  'entrada:visitas_reunioes': ['nome_colaborador', 'nome_visitante'],
+  'entrada:entrevista_rh': ['nome_colaborador', 'nome_visitante'],
+  'entrada:atendimento': ['nome_colaborador', 'nome_visitante'],
+  'entrada:prestadores_servico': ['nome_colaborador', 'nome_visitante'],
+  'entrada:stands': ['nome_colaborador', 'nome_visitante'],
+  'entrada:treinamentos_onboarding': ['nome_colaborador', 'nome_visitante'],
   'entrada:entregas_mercadoria': ['nome_colaborador', 'nome_visitante'],
 }
 
@@ -41,6 +48,13 @@ const NOMES: Record<string, { titulo: string; quando: string }> = {
   agendamento: { titulo: 'Nova reunião', quando: 'Sai para os participantes quando a reunião é agendada.' },
   lembrete: { titulo: 'Lembrete de reunião', quando: 'Sai para os participantes pouco antes do início.' },
   cancelamento: { titulo: 'Reunião cancelada', quando: 'Sai para os participantes quando a reunião é excluída da agenda.' },
+  'cancelamento:responsavel': { titulo: 'Reunião cancelada — quem pediu a sala', quando: 'Substitui o texto acima para o colaborador marcado como responsável no agendamento.' },
+  'entrada:visitas_reunioes': { titulo: 'Entrada — visita ou reunião', quando: 'Sai quando a recepção registra entrada na categoria "Visita ou reunião".' },
+  'entrada:entrevista_rh': { titulo: 'Entrada — entrevista', quando: 'Sai quando a recepção registra entrada na categoria "Entrevista RH".' },
+  'entrada:atendimento': { titulo: 'Entrada — atendimento', quando: 'Sai quando a recepção registra entrada na categoria "Atendimento".' },
+  'entrada:prestadores_servico': { titulo: 'Entrada — prestador de serviço', quando: 'Sai quando a recepção registra entrada na categoria "Prestador de serviço".' },
+  'entrada:stands': { titulo: 'Entrada — stand', quando: 'Sai quando a recepção registra entrada na categoria "Stand".' },
+  'entrada:treinamentos_onboarding': { titulo: 'Entrada — treinamento', quando: 'Sai quando a recepção registra entrada na categoria "Treinamento".' },
   'entrada:entregas_alimento': { titulo: 'Chegada de alimento', quando: 'Sai quando a recepção registra uma entrada na categoria "Entrega de alimento".' },
   'entrada:entregas_mercadoria': { titulo: 'Chegada de mercadoria', quando: 'Sai quando a recepção registra uma entrada na categoria "Entrega de mercadoria".' },
 }

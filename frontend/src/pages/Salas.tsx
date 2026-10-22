@@ -30,6 +30,7 @@ type Booking = {
   start_time: string
   end_time: string
   service: string
+  responsavel_id: string | null
   rooms: { name: string }
   booking_participants: { collaborator_id: string }[]
 }
@@ -47,7 +48,7 @@ const OPCOES_DURACAO = [
   { value: 'custom', label: 'Personalizada' },
 ]
 
-const BOOKING_FIELDS = 'id, room_id, title, booking_date, start_time, end_time, service, rooms(name), booking_participants(collaborator_id)'
+const BOOKING_FIELDS = 'id, room_id, title, booking_date, start_time, end_time, service, responsavel_id, rooms(name), booking_participants(collaborator_id)'
 
 // Régua do dia no cartão da sala: das 7h às 21h, o expediente da recepção.
 /** Alcance do painel "Próximas reuniões", em dias a partir de hoje. */
@@ -133,6 +134,9 @@ export function Salas() {
   const [customMinutes, setCustomMinutes] = useState('0')
   const [service, setService] = useState<'sem_cafe' | 'com_cafe'>('sem_cafe')
   const [selectedCollabs, setSelectedCollabs] = useState<string[]>([])
+  // Quem pediu a sala. Recebe o aviso de cancelamento com texto próprio,
+  // que reconhece o papel dele. Vazio = ninguém em destaque.
+  const [responsavelId, setResponsavelId] = useState('')
 
   useEffect(() => {
     fetchDashboard()
@@ -206,6 +210,7 @@ export function Salas() {
 
     setService(booking.service === 'com_cafe' ? 'com_cafe' : 'sem_cafe')
     setSelectedCollabs(booking.booking_participants?.map(p => p.collaborator_id) || [])
+    setResponsavelId(booking.responsavel_id ?? '')
     setIsModalOpen(true)
   }
 
@@ -358,7 +363,8 @@ export function Salas() {
             booking_date: date,
             start_time: startTime,
             duration_minutes: durationMinutes,
-            service
+            service,
+            responsavel_id: responsavelId || null
           })
           .eq('id', editingBookingId)
         if (updateError) throw updateError
@@ -373,6 +379,7 @@ export function Salas() {
             start_time: startTime,
             duration_minutes: durationMinutes,
             service,
+            responsavel_id: responsavelId || null,
             created_by: user?.id ?? null
           })
           .select()
@@ -423,12 +430,15 @@ export function Salas() {
     // junto da reserva, e depois nao haveria mais para quem enviar.
     // Se o WhatsApp falhar, a exclusao segue — o importante e tirar a
     // reuniao da agenda; o aviso e um extra.
-    const { error: avisoError } = await supabase.functions.invoke('notify-booking', {
+    const { data: aviso, error: avisoError } = await supabase.functions.invoke('notify-booking', {
       body: { booking_id: deletingBooking.id, evento: 'cancelamento' },
     })
     if (avisoError) {
       console.error('Erro ao avisar o cancelamento:', avisoError.message)
     }
+    // Uma reunião sem participantes não tem a quem avisar — dizer que o
+    // aviso "não saiu" soaria como falha de algo que nunca existiu.
+    const avisados: number = aviso?.enviados ?? 0
 
     const { error } = await supabase.from('room_bookings').delete().eq('id', deletingBooking.id)
     setDeleteLoading(false)
@@ -440,7 +450,11 @@ export function Salas() {
       avisoError ? 'error' : 'success',
       avisoError
         ? 'Reunião excluída, mas o aviso no WhatsApp não saiu.'
-        : 'Reunião excluída. Os participantes foram avisados.',
+        : avisados === 0
+          ? 'Reunião excluída. Não havia participantes para avisar.'
+          : avisados === 1
+            ? 'Reunião excluída. 1 participante foi avisado.'
+            : `Reunião excluída. ${avisados} participantes foram avisados.`,
     )
     setDeletingBooking(null)
     fetchDashboard()
@@ -458,6 +472,7 @@ export function Salas() {
     setCustomMinutes('0')
     setService('sem_cafe')
     setSelectedCollabs([])
+    setResponsavelId('')
     setError(null)
     setEditingBookingId(null)
   }
@@ -466,6 +481,9 @@ export function Salas() {
     setSelectedCollabs(prev =>
       prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
     )
+    // Tirar da reunião quem estava marcado como responsável deixaria a
+    // reserva apontando para alguém que não vai receber nada.
+    if (id === responsavelId) setResponsavelId('')
   }
 
   // Separando as agendas em próximas e passadas
@@ -484,10 +502,13 @@ export function Salas() {
     return timeToMinutes(b.end_time) <= nowMins
   })
 
-  // Nome do primeiro participante, para identificar a reunião no cartão.
+  // Quem identifica a reunião no cartão: quem pediu a sala, se estiver
+  // marcado. Sem isso, cai no primeiro participante — que é como a tela
+  // vinha funcionando, e o melhor palpite para reservas antigas.
   const getFirstParticipantName = (booking: Booking) => {
     if (!booking.booking_participants || booking.booking_participants.length === 0) return null
-    const firstCollab = collaborators.find(c => c.id === booking.booking_participants[0].collaborator_id)
+    const quem = booking.responsavel_id ?? booking.booking_participants[0].collaborator_id
+    const firstCollab = collaborators.find(c => c.id === quem)
     return firstCollab ? firstCollab.name : null
   }
 
@@ -845,6 +866,26 @@ export function Salas() {
             escolhidos={selectedCollabs}
             aoAlternar={toggleCollaborator}
           />
+
+          {/*
+            Só faz sentido depois de escolher quem participa: o responsável é
+            um dos participantes, não uma pessoa a mais.
+          */}
+          {selectedCollabs.length > 0 && (
+            <Select
+              label="Quem pediu a sala (opcional)"
+              placeholder="Ninguém em destaque"
+              value={responsavelId}
+              onChange={setResponsavelId}
+              options={[
+                { value: '', label: 'Ninguém em destaque' },
+                ...selectedCollabs.map(id => ({
+                  value: id,
+                  label: collaborators.find(c => c.id === id)?.name ?? 'Colaborador',
+                })),
+              ]}
+            />
+          )}
 
           {error && <AvisoErro>{error}</AvisoErro>}
 
